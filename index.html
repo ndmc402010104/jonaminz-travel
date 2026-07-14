@@ -10,6 +10,11 @@ Jonaminz Travel — 獨立外部專案（Platform Integration，跟 jonaminz-mov
 Reload），拿掉 reservoir/entry-core/requireLogin 的相依——這裡是獨立
 站台，沒有共用 jonaminz.com 的 session，資料存在這個網域自己的
 localStorage（跟 jonaminz-movies 目前也只有 demo 資料的階段一致）。
+
+2026-07-14：畫面改版，照交接包 REFERENCE/v0.5.1-visual-prototype-
+standalone.html 的「Journey Builder」畫面設計語言重做（見 styles.css
+檔頭說明）。hero／toolbar／三欄式版面都由 app.js 依目前選中的 Trip
+動態渲染，這裡只留品牌列跟 app-root 容器。
 -->
 <html lang="zh-Hant">
 <head>
@@ -20,19 +25,10 @@ localStorage（跟 jonaminz-movies 目前也只有 demo 資料的階段一致）
 </head>
 <body>
   <header class="travel-header">
-    <span class="travel-brand">Jonaminz Travel</span>
+    <span class="travel-brand">Jonaminz Travel<i></i></span>
   </header>
 
   <main class="travel-main">
-    <section class="travel-hero">
-      <p class="travel-eyebrow">Jonaminz Travel</p>
-      <h1 class="travel-title">旅行規劃</h1>
-      <p class="travel-subtitle">
-        建立旅行 → 收集景點 → 排進每天 → 調整順序。獨立站台 demo，資料
-        存在這個瀏覽器（尚未接 jonaminz 平台身分／後端）。
-      </p>
-    </section>
-
     <div id="app-root">
       <p class="travel-loading">初始化中...</p>
     </div>
