@@ -1,0 +1,29 @@
+{
+  "contractVersion": 1,
+  "app": {
+    "projectId": "jonaminz-travel",
+    "title": "Jonaminz Travel",
+    "description": "Jonathan 與 Minz 的旅行規劃：建立旅行、收集景點、排進每天、調整順序（MVP demo）。",
+    "visualIdentity": {
+      "name": "沙丘與深海 Sand & Deep Teal",
+      "tagline": "旅行感、地圖感",
+      "palette": {
+        "background": "#f6f1e7",
+        "surface": "#ffffff",
+        "accent": "#2f6f6a",
+        "accent2": "#c98a4b",
+        "ink": "#2c2620"
+      },
+      "typography": {
+        "display": "Georgia, \"Noto Serif TC\", serif"
+      }
+    }
+  },
+  "entries": [
+    {
+      "entryId": "main",
+      "title": "Jonaminz Travel",
+      "url": "/jonaminz-travel/"
+    }
+  ]
+}

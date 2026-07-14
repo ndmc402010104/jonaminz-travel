@@ -1,0 +1,240 @@
+/* Jonaminz Travel — 獨立站台樣式，不依賴 jonaminz 主站的 reservoir token，
+   自成一套（跟 jonaminz-movies 各自宣告 visualIdentity 同一個原則）。
+   視覺方向：沙丘＋深海（sand + deep teal），跟 jonaminz 首頁的「安靜的家」
+   米色調有親緣但不同，跟 movies 的酒紅 Editorial 也不同。 */
+
+:root {
+  --bg: #f6f1e7;
+  --surface: #ffffff;
+  --ink: #2c2620;
+  --ink-muted: rgba(44, 38, 32, 0.62);
+  --accent: #2f6f6a;
+  --accent-2: #c98a4b;
+  --border: #e3d9c6;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 8px 20px rgba(44, 38, 32, 0.1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+
+.travel-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.travel-brand {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.travel-main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+.travel-hero {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.travel-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: var(--accent-2);
+  margin: 0;
+}
+
+.travel-title {
+  font-family: Georgia, "Noto Serif TC", serif;
+  font-size: 2rem;
+  margin: 4px 0 8px;
+}
+
+.travel-subtitle {
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.travel-loading { text-align: center; color: var(--ink-muted); }
+
+.travel-footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 0.8rem;
+}
+
+.travel-footer a { color: var(--ink-muted); }
+
+/* ---- board ---- */
+
+.trip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.trip-chip {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.trip-chip[data-active="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.new-trip-form {
+  display: flex;
+  gap: 8px;
+}
+
+.new-trip-form input {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent-2);
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn[data-variant="ghost"] {
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .board { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-family: Georgia, "Noto Serif TC", serif;
+}
+
+.place-card, .stop-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+}
+
+.place-title, .stop-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+
+.day-block { margin-bottom: 16px; }
+
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.day-title { font-weight: 600; }
+.day-date { font-size: 0.75rem; color: var(--ink-muted); }
+
+.empty-hint { color: var(--ink-muted); font-size: 0.875rem; padding: 8px 0; }
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 2px 6px;
+}
+
+.icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.new-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.new-form input, .new-form select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.assign-select {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font: inherit;
+  font-size: 0.75rem;
+}
