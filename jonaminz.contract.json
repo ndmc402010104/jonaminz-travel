@@ -19,6 +19,10 @@
       }
     }
   },
+  "capabilities": {
+    "supports": ["chat.launcher@1"],
+    "requests": ["chat.launcher@1"]
+  },
   "entries": [
     {
       "entryId": "main",

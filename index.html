@@ -22,6 +22,50 @@ standalone.html 的「Journey Builder」畫面設計語言重做（見 styles.cs
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Jonaminz Travel</title>
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Jonaminz Platform SDK：S21 官方 snippet（原文凍結，逐字照抄，見
+       jonaminz repo docs/platform-integration-spec-v1.md）。2026-07-14 接入：
+       這是第一個真的載入 SDK 的外部專案。SDK 載入後會自動推送本 repo 根目錄
+       的 jonaminz.contract.json、查 Effective Settings，被授權 chat.launcher@1
+       時自動在右下角掛浮動 Chat 入口（iframe，本體在 jonaminz.com 那邊）。
+       SDK 任何失敗都只會 degraded，不影響本頁自己的功能（S24）。
+       data-contract 帶 GitHub Pages 子路徑（/jonaminz-travel/...）——預設值
+       /jonaminz.contract.json 是網域根目錄，在 project pages 上會 404。 -->
+  <script>
+  (function () {
+    if (window.Jonaminz) return;               /* 冪等：只建一次 */
+    var jz = { status: "loading", reason: null };
+    var b = { settled: false };
+    jz.ready = new Promise(function (resolve, reject) {
+      b.resolve = resolve;
+      b.reject = reject;
+    });
+    b.settle = function (kind, reason) {
+      if (b.settled) return;                   /* 只 settle 一次 */
+      b.settled = true;
+      clearTimeout(b.timer);
+      if (kind === "reject") {
+        jz.status = "failed";
+        jz.reason = reason && reason.code ? reason.code : String(reason);
+        b.reject(reason);
+      } else {
+        jz.status = kind;                      /* "ready" 或 "degraded" */
+        jz.reason = reason || null;
+        b.resolve(jz);
+      }
+      delete jz.__bootstrap;                   /* settle 後清除內部 reference */
+    };
+    b.timer = setTimeout(function () {
+      b.settle("degraded", "SDK_LOAD_TIMEOUT");
+    }, 15000);
+    jz.__snippetVersion = 1;                   /* 永久身分標記，settle 後保留 */
+    jz.__bootstrap = b;
+    window.Jonaminz = jz;
+  })();
+  </script>
+  <script async src="https://jonaminz.com/sdk/jonaminz-entry.js"
+          data-contract="/jonaminz-travel/jonaminz.contract.json"
+          onerror="window.Jonaminz&&window.Jonaminz.__bootstrap&&window.Jonaminz.__bootstrap.settle('degraded','SDK_LOAD_FAILED')"></script>
 </head>
 <body>
   <header class="travel-header">
