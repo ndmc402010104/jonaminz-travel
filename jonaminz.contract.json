@@ -20,8 +20,14 @@
     }
   },
   "capabilities": {
-    "supports": ["chat.launcher@1"],
-    "requests": ["chat.launcher@1"]
+    "supports": [
+      "chat.launcher@1",
+      "layout.metrics@1"
+    ],
+    "requests": [
+      "chat.launcher@1",
+      "layout.metrics@1"
+    ]
   },
   "entries": [
     {
