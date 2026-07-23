@@ -53,3 +53,5 @@
 - 模式切換與首頁「查看這天」會回到頁首。
 - 以已確認的 SDK class 將 Chat launcher／panel 移至底部 Travel navigation 上方。
 - DOM flow 新增單日 selection、map/day sync 與 mobile pool toggle 驗證。
+- 透過 PR #8 squash merge 至 `master`：`450c4f29843013adab85dfed2613fa3579727d47`。
+- 正式頁載入 product2 assets；Plan 結構驗收為 1 selected day／3 total days／26 markers／mobile pool toggle，無網站 console error。
