@@ -25,6 +25,9 @@
 - Live Trip 可切換每日、顯示下一站、完成進度、打卡完成與快速導航。
 - Book Studio 依 Trip／Day／Stop 自動生成 A4 書頁，提供三種 Book Style 與列印／存 PDF。
 - state schema v3 與 template v3 migration；Booking／Checklist 自動補入既有札幌旅行且不覆蓋手動資料。
+- 手機 Journey Builder 採 map-first 單日 sheet：地圖日別與時間軸同步，只顯示選中的一天。
+- 手機 Place Pool 為可開關抽屜，含搜尋、新增與排入日期。
+- 手機 Stop 卡只保留主要導航／編輯入口；Jonaminz Chat launcher 已避開四模式底部導覽。
 
 ## 尚未實作
 
