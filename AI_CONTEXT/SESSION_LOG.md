@@ -74,3 +74,13 @@
 - 探索頁新增全國 100 城 Leaflet 總覽、地區篩選、文字搜尋、到訪進度與每城 Google Maps 直達連結。
 - 名城地圖沿用手機安全設計，預設鎖定拖曳／縮放。
 - DOM 驗證新增完整 100 筆、編號邊界、Google Maps URL 與 CastleVisit persistence。
+
+## 2026-07-23 — Shared LayoutMetrics map guard
+
+- 地圖觸控守衛改由 Jonaminz SDK capability layout.metrics@1 統一判斷；Travel 不再維護 matchMedia 或桌機 breakpoint。
+- window.Jonaminz.layout.whenReady() grant 成功後讀取並訂閱 requiresTouchGuard：桌機滑鼠預設可操作，手機與混合輸入預設鎖定。
+- SDK 缺失、未授權、degraded 或逾時時採安全鎖定，避免地圖攔截手機捲動。
+- Journey 與百大名城地圖同步更新互動狀態；「操作地圖／完成操作」固定於右上同一位置，桌機不顯示觸控守衛。
+- contract 的 supports／requests 都加入 layout.metrics@1，並更新靜態資源 cache token。
+- 已通過語法、無本地 matchMedia、桌機／觸控／混合輸入及降級 runtime mock；待 Core Worker 部署後做四種實機情境確認。
+
