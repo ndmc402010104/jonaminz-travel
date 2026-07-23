@@ -13,7 +13,7 @@ Sapporo pack into localStorage as a normal completed trip on a fresh install.
       templateId: "sapporo-2025-10",
       templateVersion: 1,
       label: "快閃日本 3 日遊｜札幌",
-      summary: "2025.10.24–10.26 · 舊旅行測試模板",
+      summary: "2025.10.24–10.26 · 已完成旅行",
       sourceDocument: "北海道_札幌.pdf",
       trip: {
         title: "快閃日本 3 日遊｜札幌",
