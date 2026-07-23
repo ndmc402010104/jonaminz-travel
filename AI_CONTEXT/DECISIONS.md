@@ -15,3 +15,7 @@
 - 地圖使用可替換 adapter；目前採 Leaflet 1.9.4 + OpenStreetMap standard tiles，保留可見 attribution，不做 bulk download、prefetch 或 offline tile cache。
 - 實際導航使用 Google Maps URLs，不引入需要金鑰的 Maps JavaScript API。
 - 舊模板升級只填補缺少欄位，不覆蓋使用者已手動修改的值。
+- Travel 不得被縮減成「地圖上戳標籤」；正式資訊架構固定為旅行首頁／Journey Builder／Live Trip／Book Studio 四個互相連動的模式。
+- 旅行首頁是預設入口，負責旅程理解、預訂與準備；地圖編排器不再是產品首頁。
+- Live Trip 的進度先採可逆的手動完成，保留未來 actual time／GPS 接入。
+- Book Studio 第一版直接由結構化行程生成 A4 書頁，Book Style 可切換；照片與自由排版後續在不覆蓋手動頁面的前提下加入。
