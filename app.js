@@ -11,9 +11,11 @@
   var TRANSPORT_LABEL = { walk: "步行", train: "火車", metro: "地鐵", bus: "巴士", taxi: "計程車", car: "開車", flight: "飛行", other: "其他" };
   var DAY_COLORS = ["#a55f45", "#466f75", "#8b7a46", "#705d83", "#4f7a5d", "#a06478"];
   var TEMPLATES = Array.isArray(window.JonaminzTravelTemplates) ? window.JonaminzTravelTemplates : [];
+  var CASTLES = Array.isArray(window.Jonaminz100Castles) ? window.Jonaminz100Castles : [];
 
   var state = null;
   var mapController = null;
+  var castleMapController = null;
   var uiState = {
     activeView: "overview",
     searchQuery: "",
@@ -36,6 +38,9 @@
     wizardProgress: "",
     wizardError: "",
     mapInteractionEnabled: false,
+    castleMapInteractionEnabled: false,
+    castleFilter: "all",
+    castleSearch: "",
     wizardDraft: { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" }
   };
 
@@ -44,7 +49,7 @@
   }
 
   function emptyState() {
-    return { version: 4, trips: [], places: [], days: [], stops: [], bookings: [], checklist: [], memories: [], guides: [], shoppingItems: [], importItems: [], activeTripId: null, dismissedTemplateIds: [] };
+    return { version: 4, trips: [], places: [], days: [], stops: [], bookings: [], checklist: [], memories: [], guides: [], shoppingItems: [], castleVisits: [], importItems: [], activeTripId: null, dismissedTemplateIds: [] };
   }
 
   function finiteOrNull(value) {
@@ -68,6 +73,7 @@
     value.memories = Array.isArray(value.memories) ? value.memories : [];
     value.guides = Array.isArray(value.guides) ? value.guides : [];
     value.shoppingItems = Array.isArray(value.shoppingItems) ? value.shoppingItems : [];
+    value.castleVisits = Array.isArray(value.castleVisits) ? value.castleVisits : [];
     value.importItems = Array.isArray(value.importItems) ? value.importItems : [];
     value.dismissedTemplateIds = Array.isArray(value.dismissedTemplateIds) ? value.dismissedTemplateIds : [];
     value.places.forEach(function (place) {
@@ -91,6 +97,7 @@
       item.quantity = Math.max(1, Number(item.quantity) || 1);
       item.done = Boolean(item.done);
     });
+    value.castleVisits.forEach(function (item) { item.visited = Boolean(item.visited); });
     value.version = 4;
     if (value.activeTripId && !value.trips.some(function (trip) { return trip.id === value.activeTripId; })) {
       value.activeTripId = value.trips.length ? value.trips[0].id : null;
@@ -135,6 +142,25 @@
 
   function tripShopping(tripId) {
     return state.shoppingItems.filter(function (item) { return item.tripId === tripId; });
+  }
+
+  function tripCastleVisits(tripId) {
+    var visited = {};
+    state.castleVisits.forEach(function (item) {
+      if (item.tripId === tripId && item.visited) visited[item.castleNo] = true;
+    });
+    return visited;
+  }
+
+  function toggleCastleVisit(tripId, castleNo) {
+    var number = Number(castleNo);
+    if (!CASTLES.some(function (castle) { return castle.no === number; })) return;
+    var record = state.castleVisits.filter(function (item) {
+      return item.tripId === tripId && item.castleNo === number;
+    })[0];
+    if (record) record.visited = !record.visited;
+    else state.castleVisits.push({ id: uid(), tripId: tripId, castleNo: number, visited: true });
+    saveState();
   }
 
   function addShoppingItem(tripId, title, group, quantity) {
@@ -447,6 +473,7 @@
     state.memories = state.memories.filter(function (memory) { return memory.tripId !== tripId; });
     state.guides = state.guides.filter(function (item) { return item.tripId !== tripId; });
     state.shoppingItems = state.shoppingItems.filter(function (item) { return item.tripId !== tripId; });
+    state.castleVisits = state.castleVisits.filter(function (item) { return item.tripId !== tripId; });
     state.importItems = state.importItems.filter(function (item) { return item.tripId !== tripId; });
     state.trips = state.trips.filter(function (trip) { return trip.id !== tripId; });
     if (existing.templateId && state.dismissedTemplateIds.indexOf(existing.templateId) === -1) state.dismissedTemplateIds.push(existing.templateId);
@@ -826,7 +853,7 @@
       var active = selected && selected.id === day.id;
       return '<button type="button" data-map-day="' + day.id + '" class="' + (active ? "active" : "") + '" style="--day-color:' + DAY_COLORS[index % DAY_COLORS.length] + '"><i>0' + day.index + '</i><span><b>' + escapeHtml(day.title) + '</b><small>' + dayStops(day.id).length + " STOPS · " + escapeHtml(formatDate(day.date)) + "</small></span></button>";
     }).join("");
-    return '<section class="planner-masthead"><div class="planner-masthead-copy"><small>ITINERARY STUDIO · ' + escapeHtml(trip.destination || "JOURNEY") + '</small><h1>' + escapeHtml(trip.title) + '</h1><p>' + escapeHtml(trip.subtitle || "把收藏排成順路、好走、真的能帶著出發的每一天。") + '</p><div class="planner-metrics"><span><b>' + days.length + '</b> DAYS</span><span><b>' + totalStops + '</b> STOPS</span><span><b>' + unassignedCount + '</b> SAVED</span></div></div><div class="planner-route-card"><div class="route-card-head"><span>ROUTE INDEX</span><b>' + escapeHtml(tripDateRange(trip)) + '</b></div><div class="planner-day-strip">' + dayStrip + '</div><div class="route-card-foot"><button type="button" data-toggle-mobile-pool>＋ 景點清單</button><button type="button" data-toggle-add-day>新增一天</button><button type="button" class="route-delete-trip" data-delete-trip="' + trip.id + '" aria-label="刪除旅行">•••</button></div></div></section>';
+    return '<section class="planner-masthead"><div class="planner-masthead-copy"><small>ITINERARY STUDIO · ' + escapeHtml(trip.destination || "JOURNEY") + '</small><h1>' + escapeHtml(trip.title) + '</h1><p>' + escapeHtml(trip.subtitle || "把收藏排成順路、好走、真的能帶著出發的每一天。") + '</p><div class="planner-metrics"><span><b>' + days.length + '</b> DAYS</span><span><b>' + totalStops + '</b> STOPS</span><span><b>' + unassignedCount + '</b> SAVED</span></div></div><div class="planner-route-card"><div class="route-card-head"><span>ROUTE INDEX</span><b>' + escapeHtml(tripDateRange(trip)) + '</b></div><div class="planner-day-strip">' + dayStrip + '</div><div class="route-card-foot"><button type="button" data-toggle-mobile-pool>＋ 景點清單</button><button type="button" data-toggle-add-day>新增一天</button><button type="button" class="route-delete-trip" data-delete-trip="' + trip.id + '">刪除旅行</button></div></div></section>';
   }
 
   function renderPlanner(trip, days) {
@@ -884,6 +911,40 @@
     return items;
   }
 
+  function castleRegion(castleNo) {
+    if (castleNo <= 13) return "北海道・東北";
+    if (castleNo <= 23) return "關東";
+    if (castleNo <= 46) return "中部";
+    if (castleNo <= 62) return "近畿";
+    if (castleNo <= 75) return "中國";
+    if (castleNo <= 84) return "四國";
+    if (castleNo <= 97) return "九州";
+    return "沖繩";
+  }
+
+  function castleGoogleUrl(castle) {
+    return "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(castle.lat + "," + castle.lng);
+  }
+
+  function renderCastleAtlas(trip) {
+    var visited = tripCastleVisits(trip.id);
+    var query = uiState.castleSearch.trim().toLowerCase();
+    var filtered = CASTLES.filter(function (castle) {
+      if (uiState.castleFilter !== "all" && castleRegion(castle.no) !== uiState.castleFilter) return false;
+      return !query || (castle.name + " " + castle.location + " " + castle.no).toLowerCase().indexOf(query) !== -1;
+    });
+    var visitedCount = Object.keys(visited).length;
+    var filters = ["all", "北海道・東北", "關東", "中部", "近畿", "中國", "四國", "九州", "沖繩"].map(function (region) {
+      return '<button type="button" data-castle-filter="' + region + '" class="' + (uiState.castleFilter === region ? "active" : "") + '">' + (region === "all" ? "全部 100 城" : region) + "</button>";
+    }).join("");
+    var list = filtered.map(function (castle) {
+      var isVisited = Boolean(visited[castle.no]);
+      return '<article class="castle-card' + (isVisited ? " is-visited" : "") + '" id="castle-' + castle.no + '"><button type="button" class="castle-check" data-toggle-castle-visit="' + castle.no + '" aria-label="' + (isVisited ? "取消到訪 " : "標記到訪 ") + escapeHtml(castle.name) + '">' + (isVisited ? "✓" : "") + '</button><span>' + String(castle.no).padStart(3, "0") + '</span><div><b>' + escapeHtml(castle.name) + '</b><small>' + escapeHtml(castle.location) + " · " + castleRegion(castle.no) + '</small></div><a href="' + castleGoogleUrl(castle) + '" target="_blank" rel="noopener">Google Maps ↗</a></article>';
+    }).join("");
+    return '<section class="castle-atlas" id="castle-atlas"><header><div><small>JAPAN 100 FINE CASTLES · 1–100</small><h2>日本百大名城</h2><p>完整 100 城，不是附近搜尋。每一座都直接開啟 Google Maps。</p></div><div class="castle-progress"><b>' + visitedCount + '</b><span>/ 100 到訪</span></div></header><div class="castle-map-layout"><div class="castle-map-column"><div class="map-stage castle-map-stage' + (uiState.castleMapInteractionEnabled ? " is-unlocked" : "") + '"><div id="castle-map" class="castle-map" aria-label="日本百大名城總覽地圖"></div><button type="button" class="map-interaction-lock" data-toggle-castle-map><b>' + (uiState.castleMapInteractionEnabled ? "完成操作" : "操作名城地圖") + '</b><span>' + (uiState.castleMapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><p>名單依日本城郭協會編號；地圖座標為各城代表點。</p></div><div class="castle-directory"><div class="castle-toolbar"><div class="castle-search"><span>⌕</span><input type="search" data-castle-search placeholder="搜尋城名、所在地或編號" value="' + escapeHtml(uiState.castleSearch) + '"></div><div class="castle-filters">' + filters + '</div></div><div class="castle-list">' + (list || '<p class="panel-empty">找不到符合條件的名城。</p>') + "</div></div></div></section>";
+  }
+
   function renderExplore(trip, days) {
     var anchor = exploreAnchor(trip, days);
     var selected = days.filter(function (day) { return day.id === uiState.mapDayId; })[0] || days[0];
@@ -897,8 +958,6 @@
       return '<a class="discovery-card" href="' + googleExploreUrl(item.query) + '" target="_blank" rel="noopener"><i>' + item.icon + '</i><div><b>' + item.title + '</b><span>' + item.copy + '</span><small>以 ' + escapeHtml(anchor) + " 為中心</small></div><em>↗</em></a>";
     }).join("");
     var themes = [
-      { icon: "城", title: "日本百大名城", copy: "原百名城與登城目標", query: "日本100名城 near " + anchor },
-      { icon: "続", title: "續百大名城", copy: "續日本100名城與印章", query: "続日本100名城 near " + anchor },
       { icon: "朱", title: "御朱印地圖", copy: "神社、寺院與御朱印", query: "御朱印 near " + anchor },
       { icon: "道", title: "道之驛地圖", copy: "自駕休息、農產與限定品", query: "道の駅 near " + anchor },
       { icon: "築", title: "建築散步", copy: "名建築、庭園與文化財", query: "名建築 文化財 near " + anchor },
@@ -917,6 +976,7 @@
     }).join("");
     return '<section class="explore-hub"><header class="explore-hero"><div><small>TRIP COMPANION · ' + escapeHtml(trip.destination || trip.title) + '</small><h1>旅行中真正會用到的工具</h1><p>附近探索交給 Google Maps；清單、主題與行程決策留在這趟旅行裡。</p></div><div class="explore-anchor"><small>目前探索中心</small><b>' + escapeHtml(anchor) + '</b><span>' + escapeHtml(selected ? "Day " + selected.index + " · " + selected.title : tripDateRange(trip)) + "</span></div></header>" +
       '<section class="explore-section"><header><div><small>NEARBY NOW</small><h2>附近有什麼</h2></div><span>免 API key · 開啟 Google Maps</span></header><div class="discovery-grid">' + nearby + "</div></section>" +
+      renderCastleAtlas(trip) +
       '<section class="explore-section"><header><div><small>THEME MAPS</small><h2>主題地圖</h2></div><span>以目前地點為中心搜尋</span></header><div class="theme-map-grid">' + themes + "</div></section>" +
       '<section class="transport-deck"><div><small>ROUTE COMPARE</small><h2>這一天怎麼移動</h2><p>' + escapeHtml(selected ? selected.title : "選擇一天後比較交通") + '</p></div><div class="transport-actions"><a href="' + googleRouteUrl(selectedStops, "transit") + '" target="_blank" rel="noopener"><i>電</i><b>大眾運輸</b><span>Google Maps ↗</span></a><a href="' + googleRouteUrl(selectedStops, "walking") + '" target="_blank" rel="noopener"><i>步</i><b>步行路線</b><span>Google Maps ↗</span></a><a href="' + googleRouteUrl(selectedStops, "driving") + '" target="_blank" rel="noopener"><i>車</i><b>自駕比較</b><span>Google Maps ↗</span></a><a href="https://japantravel.navitime.com/en/area/jp/route/" target="_blank" rel="noopener"><i>JR</i><b>JR Pass／轉乘</b><span>NAVITIME ↗</span></a></div></section>' +
       '<section class="shopping-deck"><header><div><small>SHOPPING BOARD</small><h2>購物清單</h2></div><span>' + shopping.filter(function (item) { return item.done; }).length + "/" + shopping.length + ' 已買</span></header><form data-shopping-form><input name="title" required placeholder="想買什麼？"><select name="group"><option>伴手禮</option><option>藥妝</option><option>旅行紀念</option><option>途中補給</option><option>代購</option><option>其他</option></select><input type="number" name="quantity" min="1" value="1" aria-label="數量"><button type="submit">加入</button></form><div class="shopping-layout"><div class="shopping-list">' + (shoppingHtml || '<p class="panel-empty">還沒有購物項目，從右邊推薦加入或自己新增。</p>') + '</div><aside><small>DESTINATION PICKS</small><h3>這趟可以留意</h3><div class="recommendation-list">' + recommended + "</div></aside></div></section></section>";
@@ -973,17 +1033,52 @@
     mapController.setInteraction(uiState.mapInteractionEnabled);
   }
 
+  function mountCastleMap(root) {
+    if (castleMapController) { castleMapController.destroy(); castleMapController = null; }
+    var element = root.querySelector("#castle-map");
+    if (!element || !window.JonaminzTravelMap || !CASTLES.length) return;
+    var regions = ["北海道・東北", "關東", "中部", "近畿", "中國", "四國", "九州", "沖繩"];
+    castleMapController = window.JonaminzTravelMap.mount(element, {
+      onFocus: function (castleId) {
+        var card = root.querySelector("#" + castleId);
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+    castleMapController.render({
+      focusedPlaceId: null,
+      days: regions.map(function (region, regionIndex) {
+        return {
+          color: DAY_COLORS[regionIndex % DAY_COLORS.length],
+          connect: false,
+          stops: CASTLES.filter(function (castle) { return castleRegion(castle.no) === region; }).map(function (castle) {
+            return {
+              number: castle.no,
+              placeId: "castle-" + castle.no,
+              title: castle.name,
+              lat: castle.lat,
+              lng: castle.lng
+            };
+          })
+        };
+      })
+    });
+    castleMapController.setInteraction(uiState.castleMapInteractionEnabled);
+  }
+
   function render(root) {
-    var searchInput = document.activeElement && document.activeElement.matches && document.activeElement.matches("[data-search-input]") ? document.activeElement : null;
+    var searchInput = document.activeElement && document.activeElement.matches && document.activeElement.matches("[data-search-input],[data-castle-search]") ? document.activeElement : null;
     var hadFocus = Boolean(searchInput);
     var selectionStart = hadFocus ? searchInput.selectionStart : null;
     var searchWasMobile = hadFocus && searchInput.closest(".mobile-pool-search");
+    var searchWasCastle = hadFocus && searchInput.matches("[data-castle-search]");
     if (mapController) { mapController.destroy(); mapController = null; }
+    if (castleMapController) { castleMapController.destroy(); castleMapController = null; }
     renderTripBar(root);
     renderBoard(root);
     mountMap(root);
+    mountCastleMap(root);
     if (hadFocus) {
-      var nextSearch = root.querySelector(searchWasMobile ? ".mobile-pool-search [data-search-input]" : ".builder-toolbar [data-search-input]");
+      var nextSearch = root.querySelector(searchWasCastle ? "[data-castle-search]" : (searchWasMobile ? ".mobile-pool-search [data-search-input]" : ".builder-toolbar [data-search-input]"));
       if (nextSearch) { nextSearch.focus(); try { nextSearch.setSelectionRange(selectionStart, selectionStart); } catch (error) { /* ignore */ } }
     }
   }
@@ -1049,11 +1144,24 @@
         render(root);
         return;
       }
+      var castleVisit = target.closest("[data-toggle-castle-visit]");
+      if (castleVisit) {
+        toggleCastleVisit(state.activeTripId, castleVisit.getAttribute("data-toggle-castle-visit"));
+        render(root);
+        return;
+      }
+      var castleFilter = target.closest("[data-castle-filter]");
+      if (castleFilter) {
+        uiState.castleFilter = castleFilter.getAttribute("data-castle-filter");
+        render(root);
+        return;
+      }
       var viewButton = target.closest("[data-view]");
       if (viewButton) {
         uiState.activeView = viewButton.getAttribute("data-view");
         uiState.showMobilePool = false;
         uiState.mapInteractionEnabled = false;
+        uiState.castleMapInteractionEnabled = false;
         if (uiState.activeView === "live" && !uiState.liveDayId) {
           var firstDay = tripDays(state.activeTripId)[0];
           uiState.liveDayId = firstDay ? firstDay.id : null;
@@ -1132,6 +1240,15 @@
         mapInteraction.innerHTML = uiState.mapInteractionEnabled ? "<b>完成操作</b><span>鎖定後可繼續滑動頁面</span>" : "<b>操作地圖</b><span>點一下才可拖曳與縮放</span>";
         return;
       }
+      var castleMapInteraction = target.closest("[data-toggle-castle-map]");
+      if (castleMapInteraction) {
+        uiState.castleMapInteractionEnabled = !uiState.castleMapInteractionEnabled;
+        if (castleMapController) castleMapController.setInteraction(uiState.castleMapInteractionEnabled);
+        var castleStage = root.querySelector(".castle-map-stage");
+        if (castleStage) castleStage.classList.toggle("is-unlocked", uiState.castleMapInteractionEnabled);
+        castleMapInteraction.innerHTML = uiState.castleMapInteractionEnabled ? "<b>完成操作</b><span>鎖定後可繼續滑動頁面</span>" : "<b>操作名城地圖</b><span>點一下才可拖曳與縮放</span>";
+        return;
+      }
       if (target.closest("[data-locate-me]")) { if (mapController) mapController.locate(); return; }
       if (target.closest("[data-pick-new-place]")) {
         uiState.pickCoordinates = !uiState.pickCoordinates;
@@ -1156,6 +1273,7 @@
         uiState.wizardDraft[event.target.name] = event.target.value;
       }
       if (event.target.matches("[data-search-input]")) { uiState.searchQuery = event.target.value; render(root); }
+      if (event.target.matches("[data-castle-search]")) { uiState.castleSearch = event.target.value; render(root); }
     });
 
     root.addEventListener("change", function (event) {

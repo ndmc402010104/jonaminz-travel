@@ -95,7 +95,7 @@
         self.layers.push(marker);
         self.markers[stop.placeId] = marker;
       });
-      if (line.length > 1) {
+      if (day.connect !== false && line.length > 1) {
         var polyline = window.L.polyline(line, { color: day.color, weight: 4, opacity: 0.72 }).addTo(self.map);
         self.layers.push(polyline);
       }
