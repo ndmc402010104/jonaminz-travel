@@ -892,6 +892,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .map-interaction-lock b{font-size:12px}.map-interaction-lock span{font-size:8px;color:rgba(255,255,255,.66);margin-top:2px}
 .map-stage.is-unlocked .map-interaction-lock{min-width:0;padding:7px 9px;background:rgba(165,95,69,.92)}
 .map-stage.is-unlocked .map-interaction-lock span{display:none}
+.map-stage.no-touch-guard .map-interaction-lock{display:none}
 
 /* Saved places are inline. No modal, backdrop or page-blocking layer. */
 .planner-shell .place-pool-panel{
