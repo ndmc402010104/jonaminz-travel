@@ -58,4 +58,5 @@
   - 四模式底部導覽不被 Jonaminz Chat launcher 覆蓋。
   - 從首頁日卡進入 Plan 回到頁首。
 - 驗證：existing CRUD／map／product flows；focused mobile planner selection、sync、pool toggle。
-- Merge commit：待 PR 合併後回填。
+- Merge commit：`450c4f29843013adab85dfed2613fa3579727d47`（PR #8）。
+- 正式頁驗收：product2 assets；Plan 有 1 selected day／3 total days／26 markers／mobile pool toggle；無網站 console error。
