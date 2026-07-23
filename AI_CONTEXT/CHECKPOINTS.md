@@ -15,3 +15,9 @@
   - 尚未實作功能均明確標示為下一階段。
 - Merge commit：`6e33a89f6d20331d51e89f1d144b4a5e96d1bbd3`（PR #1）。
 - 驗證：JavaScript 語法、contract JSON、CSS 大括號平衡與 GitHub 遠端差異檢查通過。
+
+## C2 — 2026-07-23 Sapporo test template
+
+- 來源：2025/10/24–10/26《北海道_札幌.pdf》（19 頁）。
+- 驗收目標：全新瀏覽器直接顯示三天正式行程、Stop 順序可操作、重新整理保留、刪除旅行級聯清理且不自動復活。
+- Commit：完成 push 後補入。
