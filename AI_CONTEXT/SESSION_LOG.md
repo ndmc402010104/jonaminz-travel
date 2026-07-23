@@ -1,5 +1,13 @@
 # Session Log
 
+## 2026-07-23 — responsive map controls and Places API evaluation
+
+- 將鎖定與解鎖按鈕統一固定在地圖右上角。
+- 以寬度、hover 與 pointer 精度共同判斷桌機；桌機直接啟用 Leaflet 互動並隱藏按鈕。
+- 兩張地圖在 media query 狀態改變時同步互動能力。
+- 依 Google 官方 2026-07-20 價格與 Place Details 欄位層級評估評分、營業時間與評論。
+- 裁決目前維持 Google Maps URL，不在純靜態站直接接 Places Web Service；未來由受保護後端按需提供 rating、userRatingCount 與 opening hours。
+
 ## 2026-07-23 — Claude 移植後介面修復
 
 - 比對目前 repo、既有 v0.5.0 Journey Builder prototype 與先前產品裁決。
