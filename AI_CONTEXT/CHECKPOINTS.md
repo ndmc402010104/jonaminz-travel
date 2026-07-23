@@ -32,4 +32,6 @@
   - 手機版操作順序為地圖 → 每日行程 → 素材箱。
   - 外部 Google Maps 導航不需 API key。
 - 驗證：JavaScript syntax、30 Place／3 Day／26 Stop 關聯、DOM reload／migration／edit／cross-day／fallback／route URL。
-- Merge commit：待 PR 合併後回填。
+- Feature merge：`d014a3e77d0809efdf4da0063620cd4592fa3ea7`（PR #3）。
+- Static asset versioning：`61b5ee0c0879c145b3a68d8ba3bd0cadab7f639b`（PR #4）。
+- 正式頁驗收：26 markers、29 route/marker layers、OSM tiles 與 attribution 載入成功；桌機三欄比例為 280 / 439 / 515 px（1363 px viewport）。

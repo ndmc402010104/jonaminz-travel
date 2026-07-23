@@ -29,3 +29,6 @@
 - Place、Stop 編輯面板；Stop 跨日移動；Place／Day 級聯安全刪除。
 - 手機版優先顯示地圖，接著是每日行程與未安排素材。
 - DOM 驗證涵蓋 first-run、reload、防重複、刪除不復活、schema migration、跨日編輯、地圖 fallback 與路線 URL。
+- 透過 PR #3 squash merge 至 `master`：`d014a3e77d0809efdf4da0063620cd4592fa3ea7`。
+- 正式頁驗收發現 GitHub Pages/CDN 短暫混用舊靜態資源；PR #4 加入版本參數並合併：`61b5ee0c0879c145b3a68d8ba3bd0cadab7f639b`。
+- 公開頁驗收：26 markers、29 Leaflet interactive layers、OSM 256px tiles、attribution 與三欄版面均成功載入。
