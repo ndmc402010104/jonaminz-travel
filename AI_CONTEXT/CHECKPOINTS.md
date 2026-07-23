@@ -47,3 +47,15 @@
 - 驗證：syntax、舊 CRUD flow、map migration/edit flow、四模式產品 flow。
 - Merge commit：`3366fb7e0b58bbb67bcd06fb26df45ad3a35f658`（PR #6）。
 - 正式頁驗收：Home 3 日／3 bookings／7 checklist；Live 10 stops／8 visible tiles；Book 4 pages／3 styles；無網站 console error。
+
+## C5 — 2026-07-23 Mobile planner rebuild
+
+- 驗收目標：
+  - 手機 Plan 首屏看到地圖與單日行程，不是 26 張後台卡片。
+  - Day tab 同步控制地圖與唯一展開的 day sheet。
+  - Place Pool 可獨立開關、搜尋、新增與指派。
+  - Stop 常駐動作只留導航／編輯。
+  - 四模式底部導覽不被 Jonaminz Chat launcher 覆蓋。
+  - 從首頁日卡進入 Plan 回到頁首。
+- 驗證：existing CRUD／map／product flows；focused mobile planner selection、sync、pool toggle。
+- Merge commit：待 PR 合併後回填。

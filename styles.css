@@ -633,3 +633,91 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   body{background:#fff;padding:0}.travel-header,.trip-bar,.travel-mode-nav,.book-studio-head,.travel-footer{display:none!important}
   .travel-main{max-width:none;padding:0}.book-pages{display:block}.book-page{width:210mm;height:297mm;aspect-ratio:auto;box-shadow:none;border:0;page-break-after:always;margin:0}
 }
+
+/* ---- mobile planner: map + focused day sheet ---- */
+
+.mobile-plan-head,.mobile-pool-actions,.mobile-pool-search{display:none}
+
+@media (max-width:700px){
+  .mobile-plan-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin:0 2px 10px;padding:4px 2px;
+  }
+  .mobile-plan-head small{font-size:9px;letter-spacing:.15em;color:var(--rust)}
+  .mobile-plan-head h2{font:700 19px/1.25 var(--serif);color:var(--ink);margin:2px 0;max-width:250px}
+  .mobile-plan-head>button{
+    border:1px solid var(--line);border-radius:11px;background:#f8f0e4;color:var(--ink);
+    padding:8px 10px;font-size:10px;font-weight:700;white-space:nowrap;
+  }
+  .mobile-plan-head>button b{display:inline-grid;place-items:center;min-width:19px;height:19px;border-radius:50%;background:var(--rust);color:#fff;margin-left:4px}
+
+  .builder-hero,.builder-toolbar{display:none}
+  .builder-layout{gap:0;position:relative}
+  .builder-layout .map-panel{
+    order:1;border-radius:20px 20px 0 0;padding:10px 10px 26px;box-shadow:none;
+  }
+  .builder-layout .map-panel>header{margin:2px 3px 8px}
+  .builder-layout .journey-map{height:41vh;min-height:300px;max-height:430px;border-radius:13px}
+  .builder-layout .map-hint{display:none}
+  .builder-layout .map-actions{grid-template-columns:auto 1fr}
+  .builder-layout .map-actions .btn{padding:9px 7px;font-size:10px}
+
+  .builder-layout .journey-board-panel{
+    order:2;position:relative;z-index:3;width:100%;margin-top:-17px;padding:17px 12px 13px;
+    border-radius:23px 23px 18px 18px;box-shadow:0 -10px 30px rgba(58,47,35,.12);
+    background:rgba(250,246,238,.97);
+  }
+  .journey-board-head{align-items:center;margin-bottom:10px}
+  .journey-board-head small{font-size:9px}.journey-board-head h3{font-size:18px;margin:1px 0}
+  .journey-board-head .btn{font-size:10px;padding:7px 9px}
+  .builder-day-column{display:none;border:0;border-radius:0;background:transparent;padding:0;min-height:0}
+  .builder-day-column.is-selected{display:block}
+  .builder-day-column>header{padding:8px 2px 11px;margin:0;border-bottom:1px solid var(--line)}
+  .builder-day-column header small{font-size:10px}.builder-day-column header h4{font-size:19px;margin-top:3px}
+  .day-actions .icon-btn[data-delete-day]{display:none}
+  .day-route{padding:7px 10px}
+
+  .builder-stop-list{gap:1px}
+  .builder-stop{
+    grid-template-columns:28px minmax(0,1fr) auto;min-height:62px;padding:8px 3px;
+    border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;transform:none!important;box-shadow:none!important;
+  }
+  .builder-stop:last-child{border-bottom:0}
+  .stop-number{width:25px;height:25px}
+  .stop-copy b{font-size:14px}.stop-meta{font-size:10px}
+  .stop-copy small{display:none}
+  .builder-stop-actions{grid-column:auto;display:flex!important;max-width:none;gap:4px;margin:0}
+  .builder-stop-actions [data-edit-place],
+  .builder-stop-actions [data-move],
+  .builder-stop-actions [data-unassign]{display:none}
+  .builder-stop-actions .icon-link,
+  .builder-stop-actions [data-edit-stop]{
+    width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#f2e8da;
+  }
+
+  .builder-layout .place-pool-panel{display:none}
+  .builder-layout.show-mobile-pool:before{
+    content:"";position:fixed;inset:0;z-index:1050;background:rgba(31,40,40,.45);backdrop-filter:blur(3px);
+  }
+  .builder-layout.show-mobile-pool .place-pool-panel{
+    display:flex;flex-direction:column;position:fixed;left:10px;right:10px;bottom:82px;z-index:1100;
+    width:auto;max-height:72vh;padding:17px 13px;border-radius:22px;background:#f7efe3;
+    box-shadow:0 22px 60px rgba(24,31,31,.35);
+  }
+  .place-pool-panel>header{align-items:center}
+  .place-pool-panel>header>span{display:none}
+  .mobile-pool-actions{display:flex;gap:5px;margin-left:auto}
+  .mobile-pool-actions button{border:1px solid var(--line);border-radius:9px;background:#fffaf2;color:var(--ink);padding:7px 9px;font-size:10px;font-weight:700}
+  .mobile-pool-search{
+    display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:11px;background:#fffaf2;padding:0 10px;margin-bottom:9px;
+  }
+  .mobile-pool-search input{width:100%;border:0;background:transparent;outline:0;padding:10px 0;font-size:12px}
+  .builder-place-pool{overflow:auto;max-height:none;min-height:0}
+  .builder-place-card{background:#fffaf2}
+
+  /* Keep all four Travel modes visible and move the platform launcher above them. */
+  .travel-mode-nav{right:10px}
+  .jonaminz-chat-launcher-frame,
+  .jonaminz-chat-launcher-overlay{right:12px!important;bottom:86px!important}
+  .jonaminz-chat-panel-frame{right:10px!important;bottom:160px!important}
+}

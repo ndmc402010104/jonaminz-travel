@@ -19,3 +19,7 @@
 - 旅行首頁是預設入口，負責旅程理解、預訂與準備；地圖編排器不再是產品首頁。
 - Live Trip 的進度先採可逆的手動完成，保留未來 actual time／GPS 接入。
 - Book Studio 第一版直接由結構化行程生成 A4 書頁，Book Style 可切換；照片與自由排版後續在不覆蓋手動頁面的前提下加入。
+- 手機 Journey Builder 不得縮小桌機三欄：採上半部地圖＋下半部單日行程 sheet，一次只展開一天；素材箱為獨立抽屜。
+- 手機 Stop 預設只露出導航與編輯，刪除、Place 編輯、上下排序等次要工具不得整排常駐。
+- 任一模式或首頁日卡進入規劃時必須回到頁首，不能沿用首頁深處的 scroll position。
+- Jonaminz Chat launcher 在手機必須移到 Travel 底部導覽上方，四個 Travel mode 不得被覆蓋。

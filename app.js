@@ -25,7 +25,8 @@
     editingPlaceId: null,
     editingStopId: null,
     pickCoordinates: false,
-    liveDayId: null
+    liveDayId: null,
+    showMobilePool: false
   };
 
   function uid() {
@@ -404,6 +405,14 @@
     return formatDate(trip.startDate) + (trip.endDate && trip.endDate !== trip.startDate ? " — " + formatDate(trip.endDate) : "");
   }
 
+  function scrollPageTop() {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (window.navigator && window.navigator.userAgent.indexOf("jsdom") === -1 && typeof window.scrollTo === "function") {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+  }
+
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character];
@@ -481,7 +490,7 @@
       var options = days.map(function (day) { return '<option value="' + day.id + '">Day ' + day.index + " · " + escapeHtml(day.title) + "</option>"; }).join("");
       return '<article class="builder-place-card" data-focus-place="' + place.id + '"><div class="place-icon">' + (CATEGORY_BADGE[place.category] || "?") + '</div><div class="place-copy"><b>' + escapeHtml(place.title) + "</b><em>" + escapeHtml(place.address || CATEGORY_LABEL[place.category]) + '</em></div><div class="place-card-actions"><button type="button" class="icon-btn" data-edit-place="' + place.id + '" title="編輯">✎</button><a class="icon-link" href="' + googleSearchUrl(place) + '" target="_blank" rel="noopener" title="Google Maps">↗</a></div>' + (days.length ? '<select class="assign-select" data-assign-select data-place-id="' + place.id + '"><option value="">排到…</option>' + options + "</select>" : "") + "</article>";
     }).join("") : '<p class="builder-day-empty">' + (all.length ? "沒有符合篩選的景點。" : "所有景點都已排入行程。") + "</p>";
-    return '<aside class="place-pool-panel"><header><div><small>PLACE POOL</small><h3>未安排素材</h3></div><span>' + all.length + " 個</span></header>" + renderAddPlaceForm() + '<div class="builder-place-pool">' + cards + "</div></aside>";
+    return '<aside class="place-pool-panel"><header><div><small>PLACE POOL</small><h3>未安排素材</h3></div><span>' + all.length + ' 個</span><div class="mobile-pool-actions"><button type="button" data-toggle-add-place>＋ 新增</button><button type="button" data-toggle-mobile-pool>完成</button></div></header><div class="mobile-pool-search"><span>⌕</span><input type="text" data-search-input placeholder="搜尋素材" value="' + escapeHtml(uiState.searchQuery) + '"></div>' + renderAddPlaceForm() + '<div class="builder-place-pool">' + cards + "</div></aside>";
   }
 
   function renderAddDayForm() {
@@ -504,7 +513,8 @@
         var place = placeById(stop.sourcePlaceId);
         return '<article class="builder-stop' + (uiState.focusedPlaceId === stop.sourcePlaceId ? " is-focused" : "") + '" data-focus-place="' + stop.sourcePlaceId + '" style="--day-color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '"><span class="stop-number">' + (index + 1) + '</span><div class="stop-copy"><b>' + escapeHtml(stop.title) + "</b>" + stopMeta(stop) + (stop.note ? '<small>' + escapeHtml(stop.note) + "</small>" : "") + '</div><div class="builder-stop-actions"><a class="icon-link" href="' + (place ? googleSearchUrl(place) : "#") + '" target="_blank" rel="noopener" title="導航">↗</a><button type="button" class="icon-btn" data-edit-place="' + stop.sourcePlaceId + '" title="編輯景點資料">⌖</button><button type="button" class="icon-btn" data-edit-stop="' + stop.id + '" title="編輯當日安排">✎</button><button type="button" class="icon-btn" data-move="up" data-stop-id="' + stop.id + '"' + (index === 0 ? " disabled" : "") + '>↑</button><button type="button" class="icon-btn" data-move="down" data-stop-id="' + stop.id + '"' + (index === stops.length - 1 ? " disabled" : "") + '>↓</button><button type="button" class="icon-btn" data-unassign="' + stop.id + '" title="移回素材箱">×</button></div></article>';
       }).join("") : '<p class="builder-day-empty">從左側把景點排進這一天。</p>';
-      return '<section class="builder-day-column" data-day-id="' + day.id + '"><header><div><small style="color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '">DAY ' + day.index + (day.date ? " · " + escapeHtml(day.date) : "") + '</small><h4>' + escapeHtml(day.title) + '</h4></div><div class="day-actions"><a href="' + googleRouteUrl(stops) + '" target="_blank" rel="noopener" class="day-route">導航</a><button type="button" class="icon-btn" data-delete-day="' + day.id + '" title="刪除這一天">×</button></div></header><div class="builder-stop-list">' + stopsHtml + "</div></section>";
+      var selected = uiState.mapDayId === day.id || (uiState.mapDayId === "all" && dayIndex === 0);
+      return '<section class="builder-day-column' + (selected ? " is-selected" : "") + '" data-day-id="' + day.id + '"><header><div><small style="color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '">DAY ' + day.index + (day.date ? " · " + escapeHtml(day.date) : "") + '</small><h4>' + escapeHtml(day.title) + '</h4></div><div class="day-actions"><a href="' + googleRouteUrl(stops) + '" target="_blank" rel="noopener" class="day-route">導航</a><button type="button" class="icon-btn" data-delete-day="' + day.id + '" title="刪除這一天">×</button></div></header><div class="builder-stop-list">' + stopsHtml + "</div></section>";
     }).join("") : '<p class="builder-day-empty">還沒有天數，先新增一天。</p>';
     return '<section class="journey-board-panel"><div class="journey-board-head"><div><small>DAY TIMELINE</small><h3>每日行程</h3></div><button type="button" class="btn" data-variant="ghost" data-toggle-add-day>＋ 新增一天</button></div>' + renderAddDayForm() + '<div class="builder-day-board">' + columns + "</div></section>";
   }
@@ -596,7 +606,9 @@
   function renderPlanner(trip, days) {
     var assigned = assignedPlaceIds(trip.id);
     var unassignedCount = tripPlaces(trip.id).filter(function (place) { return !assigned[place.id]; }).length;
-    return renderHero(trip, unassignedCount, Object.keys(assigned).length, days.length) + renderToolbar() + '<div class="builder-layout">' + renderPlacePool(trip.id, days) + renderDayBoard(days) + renderMapPanel(days) + "</div>";
+    var selected = days.filter(function (day) { return day.id === uiState.mapDayId; })[0] || days[0];
+    var mobileHead = '<div class="mobile-plan-head"><div><small>JOURNEY BUILDER</small><h2>' + escapeHtml(selected ? "Day " + selected.index + " · " + selected.title : "開始規劃") + '</h2></div><button type="button" data-toggle-mobile-pool>素材箱 <b>' + unassignedCount + '</b></button></div>';
+    return mobileHead + renderHero(trip, unassignedCount, Object.keys(assigned).length, days.length) + renderToolbar() + '<div class="builder-layout' + (uiState.showMobilePool ? " show-mobile-pool" : "") + '">' + renderPlacePool(trip.id, days) + renderDayBoard(days) + renderMapPanel(days) + "</div>";
   }
 
   function renderLiveTrip(trip, days) {
@@ -669,15 +681,16 @@
   }
 
   function render(root) {
-    var searchInput = root.querySelector("[data-search-input]");
-    var hadFocus = searchInput && document.activeElement === searchInput;
+    var searchInput = document.activeElement && document.activeElement.matches && document.activeElement.matches("[data-search-input]") ? document.activeElement : null;
+    var hadFocus = Boolean(searchInput);
     var selectionStart = hadFocus ? searchInput.selectionStart : null;
+    var searchWasMobile = hadFocus && searchInput.closest(".mobile-pool-search");
     if (mapController) { mapController.destroy(); mapController = null; }
     renderTripBar(root);
     renderBoard(root);
     mountMap(root);
     if (hadFocus) {
-      var nextSearch = root.querySelector("[data-search-input]");
+      var nextSearch = root.querySelector(searchWasMobile ? ".mobile-pool-search [data-search-input]" : ".builder-toolbar [data-search-input]");
       if (nextSearch) { nextSearch.focus(); try { nextSearch.setSelectionRange(selectionStart, selectionStart); } catch (error) { /* ignore */ } }
     }
   }
@@ -698,12 +711,19 @@
           uiState.liveDayId = firstDay ? firstDay.id : null;
         }
         render(root);
+        scrollPageTop();
         return;
       }
       var openDayButton = target.closest("[data-open-day]");
       if (openDayButton) {
         uiState.activeView = "plan";
         uiState.mapDayId = openDayButton.getAttribute("data-open-day");
+        render(root);
+        scrollPageTop();
+        return;
+      }
+      if (target.closest("[data-toggle-mobile-pool]")) {
+        uiState.showMobilePool = !uiState.showMobilePool;
         render(root);
         return;
       }
