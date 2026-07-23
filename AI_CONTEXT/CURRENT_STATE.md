@@ -8,7 +8,7 @@
 - 新增並依類別篩選 Place。
 - 新增 Day。
 - 將 Place 指派為某一天的 Stop。
-- Stop 上下移動、取消指派並回到素材箱。
+- Stop 上下移動、取消指派並回到景點清單。
 - Reload 後從 localStorage 恢復資料。
 - 首次進站會顯示 Travel Library 起始畫面與第一趟旅行表單。
 - Journey Builder 桌機、平板與手機版面。
@@ -17,7 +17,7 @@
 - 可刪除整趟旅行，並級聯移除該 Trip 的 Place／Day／Stop。
 - Place 可編輯名稱、分類、地址、座標與備註，也可單獨刪除。
 - Stop 可編輯抵達時間、停留分鐘、移動方式與當天備註，並可移到另一個 Day。
-- Day 可單獨刪除；相關 Stop 回到未安排素材狀態，Place 本體保留。
+- Day 可單獨刪除；相關 Stop 回到待安排景點狀態，Place 本體保留。
 - Leaflet 互動地圖可切換全程／單日、顯示編號標記與日別折線，標記與 Stop 卡片同步。
 - 新增 Place 時可點地圖帶入座標。
 - 景點與每日／全程路線可用 Google Maps URL 開啟。
@@ -26,8 +26,11 @@
 - Book Studio 依 Trip／Day／Stop 自動生成 A4 書頁，提供三種 Book Style 與列印／存 PDF。
 - state schema v3 與 template v3 migration；Booking／Checklist 自動補入既有札幌旅行且不覆蓋手動資料。
 - 手機 Journey Builder 採 map-first 單日 sheet：地圖日別與時間軸同步，只顯示選中的一天。
-- 手機 Place Pool 為可開關抽屜，含搜尋、新增與排入日期。
-- 手機 Stop 卡只保留主要導航／編輯入口；Jonaminz Chat launcher 已避開四模式底部導覽。
+- 景點清單是規劃頁內的展開區塊，含搜尋、新增與排入日期，不使用會阻塞畫面的 modal 抽屜。
+- 行程地圖預設鎖定拖曳／縮放；需按「操作地圖」才會接管觸控，避免手機滑頁被攔住。
+- 探索模式提供附近餐飲／景點／購物、百大名城等主題地圖、Google Maps／NAVITIME 交通入口。
+- 每趟旅行有獨立購物清單、完成狀態與目的地推薦品。
+- 手機 Stop 卡只保留主要導航／編輯入口；Jonaminz Chat launcher 已避開五模式底部導覽。
 
 ## 尚未實作
 
@@ -37,3 +40,5 @@
 - 拖拉排序（目前以按鈕調序；跨日移動已支援）。
 - Book Studio 自由拖拉排版與逐頁 Page Master。
 - 正式票券附件、Booking 編輯、照片 Memory 與跨裝置同步。
+- 內嵌即時附近店家結果（目前以不需 API key 的 Google Maps URL 開啟）。
+- 百大名城／續百大名城的內建完整資料庫與拜訪紀錄（目前是主題地圖搜尋入口）。
