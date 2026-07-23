@@ -60,3 +60,12 @@
 - 驗證：existing CRUD／map／product flows；focused mobile planner selection、sync、pool toggle。
 - Merge commit：`450c4f29843013adab85dfed2613fa3579727d47`（PR #8）。
 - 正式頁驗收：product2 assets；Plan 有 1 selected day／3 total days／26 markers／mobile pool toggle；無網站 console error。
+
+## C6 — 2026-07-23 Explore tools and touch-safe map
+
+- 驗收目標：
+  - 規劃頁不再出現「素材箱」或阻塞式 drawer。
+  - 地圖預設鎖定，需明確按鈕才接管手機觸控。
+  - 第五模式提供附近探索、六種主題地圖與交通比較。
+  - 購物清單可新增、勾選、刪除並依旅行持久化。
+- 驗證：existing CRUD／map／product／trip intake flows；景點清單開關、地圖 lock/unlock、探索捷徑與購物 persistence。
