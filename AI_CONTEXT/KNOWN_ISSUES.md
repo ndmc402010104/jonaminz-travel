@@ -10,3 +10,6 @@
 - 地圖需要網路；依 OpenStreetMap tile policy 不提供離線預抓。Leaflet 或圖磚載入失敗時，行程編輯與 Google Maps 連結仍可使用。
 - 路線折線是依 Stop 順序直線連接，不是道路 travel-time routing；Google Maps 開啟後才計算實際路線。
 - Google Maps 多站點 URL 仍受 Google Maps 各平台的 waypoint 數量與產品限制。
+- Live Trip 的「完成」是手動打卡，尚未依真實時間或 GPS 自動判定。
+- Book Studio 已能由行程生成與列印，但尚未接照片上傳、自由拖拉排版與逐頁 dirty protection。
+- Booking 目前由札幌模板提供正式摘要，尚未提供新增／編輯附件或敏感訂位代碼的安全儲存。
