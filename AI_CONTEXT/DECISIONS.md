@@ -10,3 +10,8 @@
 - 先保留無建置、改檔即上線的部署方式。
 - 2025 札幌舊旅行不是測試模式；全新瀏覽器直接將它建立為一般已完成旅行，作為正式第一筆 Journey Builder 畫面。
 - 刪除旅行必須明確確認並級聯刪除該 Trip 的 Place／Day／Stop；刪除預載札幌旅行後記錄 dismissal，重新整理不得自動復活。
+- Journey Builder 採三區：未安排 Place、每日 Stop 時間軸、互動地圖；手機版順序為地圖 → 行程 → 素材。
+- Place 與 Stop 欄位必須分離：地址／座標屬於 Place；時間／停留／移動／當天備註屬於 Stop。
+- 地圖使用可替換 adapter；目前採 Leaflet 1.9.4 + OpenStreetMap standard tiles，保留可見 attribution，不做 bulk download、prefetch 或 offline tile cache。
+- 實際導航使用 Google Maps URLs，不引入需要金鑰的 Maps JavaScript API。
+- 舊模板升級只填補缺少欄位，不覆蓋使用者已手動修改的值。
