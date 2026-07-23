@@ -32,3 +32,13 @@
 - 透過 PR #3 squash merge 至 `master`：`d014a3e77d0809efdf4da0063620cd4592fa3ea7`。
 - 正式頁驗收發現 GitHub Pages/CDN 短暫混用舊靜態資源；PR #4 加入版本參數並合併：`61b5ee0c0879c145b3a68d8ba3bd0cadab7f639b`。
 - 公開頁驗收：26 markers、29 Leaflet interactive layers、OSM 256px tiles、attribution 與三欄版面均成功載入。
+
+## 2026-07-23 — Travel 四模式產品化
+
+- 使用者驗收指出地圖版仍像「Google Map 戳標籤」，不足以視為完成網站。
+- 回到既有正式定位：結構化旅行資料＋旅行中手機工具＋旅行出版編輯器。
+- 預設入口改為旅行首頁；加入高級手帳拼貼封面、行程統計、每日摘要、預訂錢包與準備清單。
+- 加入 Live Trip：日別切換、下一站、行程進度、完成打卡、導航與預訂快速入口。
+- 加入 Book Studio：由 Trip／Day／Stop 生成 A4 封面與每日頁，支援手帳／雜誌／地圖冊三種風格與列印 PDF。
+- state/template 升級 v3，加入 Booking、Checklist、Memory 容器與 Stop completed。
+- DOM 測試新增四模式、Checklist persistence、Live completion、Book generation 與 Book Style persistence。
