@@ -45,4 +45,5 @@
   - 舊 v2 札幌資料非破壞升級為 v3 並補入 Booking／Checklist。
   - Book Studio 生成 1 個封面＋3 個日頁並可列印。
 - 驗證：syntax、舊 CRUD flow、map migration/edit flow、四模式產品 flow。
-- Merge commit：待 PR 合併後回填。
+- Merge commit：`3366fb7e0b58bbb67bcd06fb26df45ad3a35f658`（PR #6）。
+- 正式頁驗收：Home 3 日／3 bookings／7 checklist；Live 10 stops／8 visible tiles；Book 4 pages／3 styles；無網站 console error。
