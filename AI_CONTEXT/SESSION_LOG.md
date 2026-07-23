@@ -42,3 +42,5 @@
 - 加入 Book Studio：由 Trip／Day／Stop 生成 A4 封面與每日頁，支援手帳／雜誌／地圖冊三種風格與列印 PDF。
 - state/template 升級 v3，加入 Booking、Checklist、Memory 容器與 Stop completed。
 - DOM 測試新增四模式、Checklist persistence、Live completion、Book generation 與 Book Style persistence。
+- 透過 PR #6 squash merge 至 `master`：`3366fb7e0b58bbb67bcd06fb26df45ad3a35f658`。
+- 正式頁驗收：Home 3 日／3 bookings／7 checklist、Live 10 stops／OSM tiles、Book 4 pages／3 styles，且無網站 console error。
