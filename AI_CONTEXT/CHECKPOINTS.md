@@ -22,3 +22,14 @@
 - 驗收目標：全新瀏覽器直接顯示三天正式行程、Stop 順序可操作、重新整理保留、刪除旅行級聯清理且不自動復活。
 - Merge commit：`3d8c3056861d20ab93b1b1e37c7b2c503018dc9a`（PR #2）。
 - 驗證：data pack 關聯完整性、DOM first-run、reload 防重複、級聯刪除與刪除後 reload 不復活均通過。
+
+## C3 — 2026-07-23 Map-centered Journey Builder
+
+- 驗收目標：
+  - 全程與單日地圖顯示編號 Stop、日別顏色與順序折線。
+  - Place／Stop 欄位分離，既有 v1 資料能非破壞升級。
+  - Place、Stop 可編輯，Stop 可跨日；Place／Day 可安全刪除。
+  - 手機版操作順序為地圖 → 每日行程 → 素材箱。
+  - 外部 Google Maps 導航不需 API key。
+- 驗證：JavaScript syntax、30 Place／3 Day／26 Stop 關聯、DOM reload／migration／edit／cross-day／fallback／route URL。
+- Merge commit：待 PR 合併後回填。
