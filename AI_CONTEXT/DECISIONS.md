@@ -15,11 +15,13 @@
 - 地圖使用可替換 adapter；目前採 Leaflet 1.9.4 + OpenStreetMap standard tiles，保留可見 attribution，不做 bulk download、prefetch 或 offline tile cache。
 - 實際導航使用 Google Maps URLs，不引入需要金鑰的 Maps JavaScript API。
 - 舊模板升級只填補缺少欄位，不覆蓋使用者已手動修改的值。
-- Travel 不得被縮減成「地圖上戳標籤」；正式資訊架構固定為旅行首頁／Journey Builder／Live Trip／Book Studio 四個互相連動的模式。
+- Travel 不得被縮減成「地圖上戳標籤」；正式資訊架構為旅行首頁／Journey Builder／Live Trip／Book Studio／探索工具五個互相連動的模式。
 - 旅行首頁是預設入口，負責旅程理解、預訂與準備；地圖編排器不再是產品首頁。
 - Live Trip 的進度先採可逆的手動完成，保留未來 actual time／GPS 接入。
 - Book Studio 第一版直接由結構化行程生成 A4 書頁，Book Style 可切換；照片與自由排版後續在不覆蓋手動頁面的前提下加入。
-- 手機 Journey Builder 不得縮小桌機三欄：採上半部地圖＋下半部單日行程 sheet，一次只展開一天；素材箱為獨立抽屜。
+- 手機 Journey Builder 不得縮小桌機三欄：採上半部地圖＋下半部單日行程 sheet，一次只展開一天；待安排地點使用頁內景點清單，不做阻塞式抽屜。
+- 地圖在手機預設不接管觸控；只有按下「操作地圖」後才開啟拖曳與縮放，完成後可再鎖定。
+- 附近探索第一版使用 Google Maps URLs，不引入 Places API 金鑰與計費；網站保存的是旅行清單與決策，不複製第三方店家資料。
 - 手機 Stop 預設只露出導航與編輯，刪除、Place 編輯、上下排序等次要工具不得整排常駐。
 - 任一模式或首頁日卡進入規劃時必須回到頁首，不能沿用首頁深處的 scroll position。
-- Jonaminz Chat launcher 在手機必須移到 Travel 底部導覽上方，四個 Travel mode 不得被覆蓋。
+- Jonaminz Chat launcher 在手機必須移到 Travel 底部導覽上方，五個 Travel mode 不得被覆蓋。
