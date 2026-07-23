@@ -69,3 +69,12 @@
   - 第五模式提供附近探索、六種主題地圖與交通比較。
   - 購物清單可新增、勾選、刪除並依旅行持久化。
 - 驗證：existing CRUD／map／product／trip intake flows；景點清單開關、地圖 lock/unlock、探索捷徑與購物 persistence。
+
+## C7 — 2026-07-23 Complete Japan 100 Castles atlas
+
+- 驗收目標：
+  - 日本100名城為完整 1–100 靜態資料，不依賴 Places Nearby Search。
+  - 全國地圖顯示 100 個代表點，地圖預設鎖定手機觸控。
+  - 名單可依地區／文字篩選，每城可開 Google Maps 並保存到訪狀態。
+  - 規劃頁刪除旅行必須直接標示，不使用假三點選單。
+- 驗證：100 筆資料、1／100 編號邊界、Google Maps URL、CastleVisit persistence，以及既有四組 DOM flow。
