@@ -13,12 +13,14 @@
 - 首次進站會顯示 Travel Library 起始畫面與第一趟旅行表單。
 - Journey Builder 桌機、平板與手機版面。
 - 損壞或不完整的 v1 localStorage 會正規化，避免畫面直接崩潰。
+- 全新瀏覽器直接顯示「快閃日本 3 日遊｜札幌」正式旅行資料。
+- 可刪除整趟旅行，並級聯移除該 Trip 的 Place／Day／Stop。
 
 ## 尚未實作
 
 - 登入與雙人同步。
 - Supabase／正式後端與 Storage。
-- Trip／Place／Day 的編輯與刪除。
+- Trip／Place／Day 的編輯，以及單獨 Place／Day 刪除。
 - 拖拉排序、跨日移動。
 - 旅行書生成、Book Studio、Page Master、Book Style。
 - Live Trip、票券、住宿、導航與 Memory。
