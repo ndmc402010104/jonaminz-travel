@@ -1,6 +1,6 @@
 /*
- * Jonaminz Travel — map-centered Journey Builder.
- * Trip / Place / Day / Stop are persisted independently in localStorage.
+ * Jonaminz Travel — journey planning, live trip and travel book.
+ * Domain records are persisted independently in localStorage.
  */
 (function () {
   "use strict";
@@ -15,6 +15,7 @@
   var state = null;
   var mapController = null;
   var uiState = {
+    activeView: "overview",
     searchQuery: "",
     categoryFilter: "all",
     showAddPlace: false,
@@ -23,7 +24,8 @@
     focusedPlaceId: null,
     editingPlaceId: null,
     editingStopId: null,
-    pickCoordinates: false
+    pickCoordinates: false,
+    liveDayId: null
   };
 
   function uid() {
@@ -31,7 +33,7 @@
   }
 
   function emptyState() {
-    return { version: 2, trips: [], places: [], days: [], stops: [], activeTripId: null, dismissedTemplateIds: [] };
+    return { version: 3, trips: [], places: [], days: [], stops: [], bookings: [], checklist: [], memories: [], activeTripId: null, dismissedTemplateIds: [] };
   }
 
   function finiteOrNull(value) {
@@ -45,11 +47,14 @@
   }
 
   function normalizeState(value) {
-    if (!value || (value.version !== 1 && value.version !== 2)) return emptyState();
+    if (!value || [1, 2, 3].indexOf(value.version) === -1) return emptyState();
     value.trips = Array.isArray(value.trips) ? value.trips : [];
     value.places = Array.isArray(value.places) ? value.places : [];
     value.days = Array.isArray(value.days) ? value.days : [];
     value.stops = Array.isArray(value.stops) ? value.stops : [];
+    value.bookings = Array.isArray(value.bookings) ? value.bookings : [];
+    value.checklist = Array.isArray(value.checklist) ? value.checklist : [];
+    value.memories = Array.isArray(value.memories) ? value.memories : [];
     value.dismissedTemplateIds = Array.isArray(value.dismissedTemplateIds) ? value.dismissedTemplateIds : [];
     value.places.forEach(function (place) {
       place.category = place.category || "want";
@@ -63,8 +68,10 @@
       stop.duration = Math.max(0, Number(stop.duration) || 0);
       stop.transport = stop.transport || "";
       stop.note = stop.note || "";
+      stop.completed = Boolean(stop.completed);
     });
-    value.version = 2;
+    value.checklist.forEach(function (item) { item.done = Boolean(item.done); });
+    value.version = 3;
     if (value.activeTripId && !value.trips.some(function (trip) { return trip.id === value.activeTripId; })) {
       value.activeTripId = value.trips.length ? value.trips[0].id : null;
     }
@@ -90,6 +97,14 @@
     return state.places.filter(function (place) { return place.tripId === tripId; });
   }
 
+  function tripBookings(tripId) {
+    return state.bookings.filter(function (booking) { return booking.tripId === tripId; });
+  }
+
+  function tripChecklist(tripId) {
+    return state.checklist.filter(function (item) { return item.tripId === tripId; });
+  }
+
   function dayStops(dayId) {
     return state.stops.filter(function (stop) { return stop.dayId === dayId; }).sort(function (a, b) { return a.position - b.position; });
   }
@@ -111,10 +126,11 @@
   }
 
   function createTrip(title) {
-    var trip = { id: uid(), title: title, startDate: null, endDate: null, status: "planning" };
+    var trip = { id: uid(), title: title, subtitle: "", destination: "", startDate: null, endDate: null, status: "planning", bookStyle: "scrapbook" };
     state.trips.push(trip);
     state.activeTripId = trip.id;
     uiState.mapDayId = "all";
+    uiState.activeView = "overview";
     saveState();
   }
 
@@ -154,13 +170,28 @@
         if (!stop.note) stop.note = sourceStop.note || "";
       });
     });
+    trip.subtitle = trip.subtitle || template.trip.subtitle || "";
+    trip.destination = trip.destination || template.trip.destination || "";
+    trip.bookStyle = trip.bookStyle || template.trip.bookStyle || "scrapbook";
+    (template.bookings || []).forEach(function (source) {
+      if (state.bookings.some(function (item) { return item.tripId === trip.id && item.templateKey === source.key; })) return;
+      state.bookings.push({
+        id: uid(), tripId: trip.id, type: source.type || "other", title: source.title,
+        date: source.date || "", endDate: source.endDate || "", meta: source.meta || "",
+        note: source.note || "", templateKey: source.key
+      });
+    });
+    (template.checklist || []).forEach(function (source) {
+      if (state.checklist.some(function (item) { return item.tripId === trip.id && item.templateKey === source.key; })) return;
+      state.checklist.push({ id: uid(), tripId: trip.id, title: source.title, group: source.group || "其他", done: false, templateKey: source.key });
+    });
     trip.templateVersion = template.templateVersion;
     saveState();
   }
 
   function importTemplate(templateId) {
     var template = getTemplate(templateId);
-    if (!template || (template.schemaVersion !== 1 && template.schemaVersion !== 2)) return null;
+    if (!template || [1, 2, 3].indexOf(template.schemaVersion) === -1) return null;
     var existing = getTemplateTrip(templateId);
     if (existing) {
       upgradeTemplateTrip(existing, template);
@@ -174,12 +205,15 @@
     var trip = {
       id: tripId,
       title: template.trip.title,
+      subtitle: template.trip.subtitle || "",
+      destination: template.trip.destination || "",
       startDate: template.trip.startDate,
       endDate: template.trip.endDate,
       status: template.trip.status || "template",
       templateId: template.templateId,
       templateVersion: template.templateVersion,
-      sourceDocument: template.sourceDocument
+      sourceDocument: template.sourceDocument,
+      bookStyle: template.trip.bookStyle || "scrapbook"
     };
     state.trips.push(trip);
     template.places.forEach(function (source) {
@@ -201,6 +235,16 @@
       var dayId = uid();
       dayIds[source.key] = dayId;
       state.days.push({ id: dayId, tripId: tripId, index: source.index, date: source.date || "", title: source.title || ("Day " + source.index), templateKey: source.key });
+    });
+    (template.bookings || []).forEach(function (source) {
+      state.bookings.push({
+        id: uid(), tripId: tripId, type: source.type || "other", title: source.title,
+        date: source.date || "", endDate: source.endDate || "", meta: source.meta || "",
+        note: source.note || "", templateKey: source.key
+      });
+    });
+    (template.checklist || []).forEach(function (source) {
+      state.checklist.push({ id: uid(), tripId: tripId, title: source.title, group: source.group || "其他", done: false, templateKey: source.key });
     });
     template.days.forEach(function (source) {
       source.stops.forEach(function (item, index) {
@@ -233,10 +277,14 @@
     state.stops = state.stops.filter(function (stop) { return !dayIds[stop.dayId]; });
     state.days = state.days.filter(function (day) { return day.tripId !== tripId; });
     state.places = state.places.filter(function (place) { return place.tripId !== tripId; });
+    state.bookings = state.bookings.filter(function (booking) { return booking.tripId !== tripId; });
+    state.checklist = state.checklist.filter(function (item) { return item.tripId !== tripId; });
+    state.memories = state.memories.filter(function (memory) { return memory.tripId !== tripId; });
     state.trips = state.trips.filter(function (trip) { return trip.id !== tripId; });
     if (existing.templateId && state.dismissedTemplateIds.indexOf(existing.templateId) === -1) state.dismissedTemplateIds.push(existing.templateId);
     state.activeTripId = state.trips.length ? state.trips[0].id : null;
     uiState.mapDayId = "all";
+    uiState.activeView = "overview";
     saveState();
   }
 
@@ -329,6 +377,31 @@
   function unassignStop(stopId) {
     state.stops = state.stops.filter(function (stop) { return stop.id !== stopId; });
     saveState();
+  }
+
+  function toggleStopComplete(stopId) {
+    var stop = stopById(stopId);
+    if (!stop) return;
+    stop.completed = !stop.completed;
+    saveState();
+  }
+
+  function toggleChecklistItem(itemId) {
+    var item = state.checklist.filter(function (candidate) { return candidate.id === itemId; })[0];
+    if (!item) return;
+    item.done = !item.done;
+    saveState();
+  }
+
+  function formatDate(date) {
+    if (!date) return "日期未定";
+    var parts = date.split("-");
+    return parts.length === 3 ? Number(parts[1]) + " 月 " + Number(parts[2]) + " 日" : date;
+  }
+
+  function tripDateRange(trip) {
+    if (!trip.startDate) return "日期未定";
+    return formatDate(trip.startDate) + (trip.endDate && trip.endDate !== trip.startDate ? " — " + formatDate(trip.endDate) : "");
   }
 
   function escapeHtml(value) {
@@ -482,14 +555,90 @@
     return '<div class="editor-backdrop" data-close-editor><section class="editor-sheet" role="dialog" aria-modal="true" aria-labelledby="stop-editor-title" data-editor-sheet><header><div><small>STOP</small><h3 id="stop-editor-title">' + escapeHtml(stop.title) + '</h3></div><button type="button" class="editor-close" data-close-editor>×</button></header><form data-edit-stop-form data-stop-id="' + stop.id + '"><label>安排日期<select name="dayId">' + dayOptions + '</select></label><div class="coordinate-row"><label>抵達時間<input type="time" name="time" value="' + escapeHtml(stop.time) + '"></label><label>停留分鐘<input type="number" min="0" step="5" name="duration" value="' + stop.duration + '"></label></div><label>移動方式<select name="transport">' + transportOptions(stop.transport) + '</select></label><label>這次行程的備註<textarea name="note">' + escapeHtml(stop.note) + '</textarea></label><div class="editor-actions"><button type="button" class="danger-link" data-unassign="' + stop.id + '">移回素材箱</button><button type="submit" class="btn">儲存安排</button></div></form></section></div>';
   }
 
+  function renderAppNav() {
+    var views = [
+      { id: "overview", icon: "⌂", label: "旅行首頁" },
+      { id: "plan", icon: "⌘", label: "規劃" },
+      { id: "live", icon: "◎", label: "旅途中" },
+      { id: "book", icon: "▤", label: "旅行書" }
+    ];
+    return '<nav class="travel-mode-nav" aria-label="旅行功能">' + views.map(function (view) {
+      return '<button type="button" data-view="' + view.id + '" class="' + (uiState.activeView === view.id ? "active" : "") + '"><i>' + view.icon + "</i><span>" + view.label + "</span></button>";
+    }).join("") + "</nav>";
+  }
+
+  function renderBookingCard(booking) {
+    var icon = booking.type === "flight" ? "✈" : booking.type === "hotel" ? "▰" : "◇";
+    return '<article class="booking-card"><span class="booking-icon">' + icon + '</span><div><small>' + escapeHtml(booking.type === "flight" ? "FLIGHT" : booking.type === "hotel" ? "STAY" : "BOOKING") + '</small><b>' + escapeHtml(booking.title) + '</b><em>' + escapeHtml(booking.meta) + '</em><p>' + escapeHtml(formatDate(booking.date)) + (booking.endDate ? " — " + escapeHtml(formatDate(booking.endDate)) : "") + '</p></div></article>';
+  }
+
+  function renderOverview(trip, days) {
+    var bookings = tripBookings(trip.id);
+    var checklist = tripChecklist(trip.id);
+    var doneCount = checklist.filter(function (item) { return item.done; }).length;
+    var stopCount = days.reduce(function (count, day) { return count + dayStops(day.id).length; }, 0);
+    var dayCards = days.map(function (day, dayIndex) {
+      var stops = dayStops(day.id);
+      return '<article class="overview-day-card" style="--day-color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '"><header><span>0' + day.index + '</span><div><small>' + escapeHtml(formatDate(day.date)) + '</small><h3>' + escapeHtml(day.title) + '</h3></div></header><div class="overview-route">' + stops.slice(0, 5).map(function (stop, index) {
+        return '<span><i>' + (index + 1) + '</i>' + escapeHtml(stop.title) + "</span>";
+      }).join("") + (stops.length > 5 ? '<em>＋' + (stops.length - 5) + " 個停留</em>" : "") + '</div><button type="button" data-open-day="' + day.id + '">查看這天 →</button></article>';
+    }).join("");
+    var checklistHtml = checklist.map(function (item) {
+      return '<label class="check-item' + (item.done ? " is-done" : "") + '"><input type="checkbox" data-checklist="' + item.id + '"' + (item.done ? " checked" : "") + '><span></span><div><small>' + escapeHtml(item.group) + "</small><b>" + escapeHtml(item.title) + "</b></div></label>";
+    }).join("");
+    return '<section class="trip-overview">' +
+      '<div class="travel-cover-card"><div class="cover-stamp">TRAVEL BOOK · ' + (trip.status === "completed" ? "ARCHIVE" : "PLANNING") + '</div><div class="cover-copy"><small>' + escapeHtml(trip.destination || "YOUR NEXT JOURNEY") + '</small><h1>' + escapeHtml(trip.title) + '</h1><p>' + escapeHtml(trip.subtitle || "把路線、預訂與回憶收進同一本旅行書。") + '</p><div class="cover-date">' + escapeHtml(tripDateRange(trip)) + '</div><button type="button" class="cover-action" data-view="plan">打開行程規劃 <span>→</span></button></div><div class="cover-collage"><div class="cover-photo cover-photo-a"><b>SAPPORO</b><span>43.0618° N</span></div><div class="cover-photo cover-photo-b"><i>03</i><b>DAYS</b></div><div class="cover-ticket"><small>JONATHAN × MINZ</small><b>CTS</b><span>WEEKEND JOURNEY</span></div></div></div>' +
+      '<div class="overview-stats"><article><small>DAYS</small><b>' + days.length + '</b><span>天旅程</span></article><article><small>STOPS</small><b>' + stopCount + '</b><span>個停留</span></article><article><small>READY</small><b>' + doneCount + '/' + checklist.length + '</b><span>準備完成</span></article><article><small>BOOKINGS</small><b>' + bookings.length + '</b><span>筆預訂</span></article></div>' +
+      '<div class="overview-section-head"><div><small>THE JOURNEY</small><h2>三天，一條完整的北國路線</h2></div><button type="button" data-view="plan">編輯行程</button></div><div class="overview-days">' + dayCards + '</div>' +
+      '<div class="overview-grid"><section class="overview-panel"><header><div><small>TRAVEL WALLET</small><h2>預訂與住宿</h2></div><span>' + bookings.length + " 筆</span></header><div class=\"booking-list\">" + (bookings.length ? bookings.map(renderBookingCard).join("") : '<p class="panel-empty">還沒有預訂資料。</p>') + '</div></section><section class="overview-panel checklist-panel"><header><div><small>BEFORE YOU GO</small><h2>出發準備</h2></div><span>' + doneCount + "/" + checklist.length + '</span></header><div class="check-list">' + (checklistHtml || '<p class="panel-empty">目前沒有準備項目。</p>') + "</div></section></div></section>";
+  }
+
+  function renderPlanner(trip, days) {
+    var assigned = assignedPlaceIds(trip.id);
+    var unassignedCount = tripPlaces(trip.id).filter(function (place) { return !assigned[place.id]; }).length;
+    return renderHero(trip, unassignedCount, Object.keys(assigned).length, days.length) + renderToolbar() + '<div class="builder-layout">' + renderPlacePool(trip.id, days) + renderDayBoard(days) + renderMapPanel(days) + "</div>";
+  }
+
+  function renderLiveTrip(trip, days) {
+    if (!days.length) return '<section class="live-empty"><h1>先在「規劃」建立一天行程</h1><button class="btn" data-view="plan">開始規劃</button></section>';
+    var selected = days.filter(function (day) { return day.id === uiState.liveDayId; })[0] || days[0];
+    var stops = dayStops(selected.id);
+    var done = stops.filter(function (stop) { return stop.completed; }).length;
+    var current = stops.filter(function (stop) { return !stop.completed; })[0] || stops[stops.length - 1] || null;
+    var currentPlace = current ? placeById(current.sourcePlaceId) : null;
+    var tabs = days.map(function (day) {
+      return '<button type="button" data-live-day="' + day.id + '" class="' + (day.id === selected.id ? "active" : "") + '"><b>D' + day.index + '</b><span>' + escapeHtml(formatDate(day.date)) + "</span></button>";
+    }).join("");
+    var timeline = stops.map(function (stop, index) {
+      var place = placeById(stop.sourcePlaceId);
+      return '<article class="live-stop' + (stop.completed ? " is-complete" : "") + (current && current.id === stop.id ? " is-current" : "") + '"><button type="button" class="live-check" data-toggle-stop="' + stop.id + '" aria-label="切換完成狀態">' + (stop.completed ? "✓" : index + 1) + '</button><div><small>' + escapeHtml(stop.time || "時間未定") + '</small><b>' + escapeHtml(stop.title) + "</b><span>" + escapeHtml([stop.duration ? stop.duration + " 分" : "", stop.transport ? TRANSPORT_LABEL[stop.transport] : ""].filter(Boolean).join(" · ") || "點開可補上時間與交通") + '</span></div><div class="live-stop-actions"><button type="button" data-edit-stop="' + stop.id + '">調整</button>' + (place ? '<a href="' + googleSearchUrl(place) + '" target="_blank" rel="noopener">導航 ↗</a>' : "") + "</div></article>";
+    }).join("");
+    uiState.mapDayId = selected.id;
+    return '<section class="live-trip"><header class="live-header"><div><small>LIVE TRIP · ' + escapeHtml(trip.destination || "") + '</small><h1>今天的旅程</h1><p>' + escapeHtml(selected.title) + '</p></div><div class="live-progress"><b>' + done + '/' + stops.length + '</b><span>已完成</span></div></header><div class="live-day-tabs">' + tabs + '</div>' +
+      (current ? '<section class="next-stop-card"><div class="next-label">NEXT STOP</div><div class="next-main"><div><small>' + escapeHtml(current.time || "接下來") + '</small><h2>' + escapeHtml(current.title) + '</h2><p>' + escapeHtml((currentPlace && currentPlace.address) || current.note || "點導航直接前往下一站") + '</p></div><span class="next-number">' + (stops.indexOf(current) + 1) + '</span></div><div class="next-actions"><button type="button" data-toggle-stop="' + current.id + '">✓ 完成這一站</button>' + (currentPlace ? '<a href="' + googleSearchUrl(currentPlace) + '" target="_blank" rel="noopener">Google Maps 導航 ↗</a>' : "") + "</div></section>" : "") +
+      '<div class="live-layout"><section class="live-timeline"><div class="section-kicker">TODAY · ' + escapeHtml(formatDate(selected.date)) + '</div>' + (timeline || '<p class="panel-empty">這一天還沒有景點。</p>') + '</section><div class="live-side">' + renderMapPanel(days) + '<section class="live-wallet"><header><small>QUICK ACCESS</small><h3>旅途錢包</h3></header>' + tripBookings(trip.id).map(renderBookingCard).join("") + "</section></div></div></section>";
+  }
+
+  function renderTravelBook(trip, days) {
+    var pages = days.map(function (day, dayIndex) {
+      var stops = dayStops(day.id);
+      return '<article class="book-page day-page"><div class="page-number">0' + (dayIndex + 2) + '</div><header><small>' + escapeHtml(formatDate(day.date)) + " · DAY " + day.index + '</small><h2>' + escapeHtml(day.title) + '</h2></header><div class="book-photo-grid"><div class="book-photo-main"><span>' + escapeHtml((stops[0] && stops[0].title) || "JOURNEY") + '</span></div><div class="book-photo-note">SAPPORO<br><b>' + String(stops.length).padStart(2, "0") + " STOPS</b></div></div><ol>" + stops.map(function (stop) {
+        return '<li><time>' + escapeHtml(stop.time || "—") + '</time><div><b>' + escapeHtml(stop.title) + "</b><span>" + escapeHtml(stop.note || (stop.transport ? TRANSPORT_LABEL[stop.transport] : "旅程中的一站")) + "</span></div></li>";
+      }).join("") + '</ol><footer>JONAMINZ TRAVEL · ' + escapeHtml(trip.destination || trip.title) + "</footer></article>";
+    }).join("");
+    return '<section class="book-studio"><header class="book-studio-head"><div><small>BOOK STUDIO</small><h1>把走過的路，排成一本書。</h1><p>行程資料會自動長成可列印的旅行書；更改行程，書頁也會一起更新。</p></div><div class="book-tools"><div class="book-style-switch"><button data-book-style="scrapbook" class="' + (trip.bookStyle === "scrapbook" ? "active" : "") + '">手帳</button><button data-book-style="editorial" class="' + (trip.bookStyle === "editorial" ? "active" : "") + '">雜誌</button><button data-book-style="atlas" class="' + (trip.bookStyle === "atlas" ? "active" : "") + '">地圖冊</button></div><button type="button" class="btn" data-print-book>列印／存成 PDF</button></div></header><div class="book-pages book-style-' + escapeHtml(trip.bookStyle || "scrapbook") + '"><article class="book-page book-cover"><div class="page-number">01</div><small>TRAVEL ARCHIVE · ' + escapeHtml(trip.destination || "") + '</small><h2>' + escapeHtml(trip.title) + '</h2><p>' + escapeHtml(trip.subtitle || "OUR JOURNEY") + '</p><div class="book-cover-art"><span>J</span><span>×</span><span>M</span></div><footer>' + escapeHtml(tripDateRange(trip)) + "</footer></article>" + pages + "</div></section>";
+  }
+
   function renderBoard(root) {
     var board = root.querySelector("[data-board]");
     if (!state.activeTripId) { board.innerHTML = renderWelcome(); return; }
     var trip = state.trips.filter(function (item) { return item.id === state.activeTripId; })[0];
     var days = tripDays(trip.id);
-    var assigned = assignedPlaceIds(trip.id);
-    var unassignedCount = tripPlaces(trip.id).filter(function (place) { return !assigned[place.id]; }).length;
-    board.innerHTML = renderHero(trip, unassignedCount, Object.keys(assigned).length, days.length) + renderToolbar() + '<div class="builder-layout">' + renderPlacePool(trip.id, days) + renderDayBoard(days) + renderMapPanel(days) + "</div>" + renderPlaceEditor() + renderStopEditor();
+    var content = uiState.activeView === "plan" ? renderPlanner(trip, days)
+      : uiState.activeView === "live" ? renderLiveTrip(trip, days)
+      : uiState.activeView === "book" ? renderTravelBook(trip, days)
+      : renderOverview(trip, days);
+    board.innerHTML = renderAppNav() + content + renderPlaceEditor() + renderStopEditor();
   }
 
   function mountMap(root) {
@@ -541,8 +690,42 @@
   function bindEvents(root) {
     root.addEventListener("click", function (event) {
       var target = event.target;
+      var viewButton = target.closest("[data-view]");
+      if (viewButton) {
+        uiState.activeView = viewButton.getAttribute("data-view");
+        if (uiState.activeView === "live" && !uiState.liveDayId) {
+          var firstDay = tripDays(state.activeTripId)[0];
+          uiState.liveDayId = firstDay ? firstDay.id : null;
+        }
+        render(root);
+        return;
+      }
+      var openDayButton = target.closest("[data-open-day]");
+      if (openDayButton) {
+        uiState.activeView = "plan";
+        uiState.mapDayId = openDayButton.getAttribute("data-open-day");
+        render(root);
+        return;
+      }
+      var liveDayButton = target.closest("[data-live-day]");
+      if (liveDayButton) {
+        uiState.liveDayId = liveDayButton.getAttribute("data-live-day");
+        uiState.mapDayId = uiState.liveDayId;
+        render(root);
+        return;
+      }
+      var toggleStopButton = target.closest("[data-toggle-stop]");
+      if (toggleStopButton) { toggleStopComplete(toggleStopButton.getAttribute("data-toggle-stop")); render(root); return; }
+      var bookStyleButton = target.closest("[data-book-style]");
+      if (bookStyleButton) {
+        var activeTrip = state.trips.filter(function (trip) { return trip.id === state.activeTripId; })[0];
+        if (activeTrip) { activeTrip.bookStyle = bookStyleButton.getAttribute("data-book-style"); saveState(); }
+        render(root);
+        return;
+      }
+      if (target.closest("[data-print-book]")) { window.print(); return; }
       var selectTrip = target.closest("[data-select-trip]");
-      if (selectTrip) { state.activeTripId = selectTrip.getAttribute("data-select-trip"); uiState.mapDayId = "all"; saveState(); render(root); return; }
+      if (selectTrip) { state.activeTripId = selectTrip.getAttribute("data-select-trip"); uiState.mapDayId = "all"; uiState.activeView = "overview"; saveState(); render(root); return; }
       var deleteTripButton = target.closest("[data-delete-trip]");
       if (deleteTripButton) {
         if (window.confirm("確定刪除整趟旅行？景點、日期與安排會一起刪除。")) { deleteTrip(deleteTripButton.getAttribute("data-delete-trip")); render(root); }
@@ -596,6 +779,8 @@
     });
 
     root.addEventListener("change", function (event) {
+      var checklist = event.target.closest("[data-checklist]");
+      if (checklist) { toggleChecklistItem(checklist.getAttribute("data-checklist")); render(root); return; }
       var select = event.target.closest("[data-assign-select]");
       if (select && select.value) { assignPlaceToDay(select.getAttribute("data-place-id"), select.value); render(root); }
     });
