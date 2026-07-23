@@ -55,3 +55,13 @@
 - DOM flow 新增單日 selection、map/day sync 與 mobile pool toggle 驗證。
 - 透過 PR #8 squash merge 至 `master`：`450c4f29843013adab85dfed2613fa3579727d47`。
 - 正式頁載入 product2 assets；Plan 結構驗收為 1 selected day／3 total days／26 markers／mobile pool toggle，無網站 console error。
+
+## 2026-07-23 — Explore tools and touch-safe map
+
+- 依手機實測移除「素材箱」命名與阻塞式抽屜，改為規劃頁內可展開的「景點清單」。
+- 地圖預設鎖定拖曳、縮放與鍵盤操作；按「操作地圖」才解鎖，避免手機上下滑動被地圖攔截。
+- 新增第五個「探索」模式：附近餐飲／景點／購物／休息、百大名城等六種主題地圖。
+- 新增大眾運輸、步行、自駕的 Google Maps 路線入口與 NAVITIME 轉乘入口。
+- 新增每趟旅行獨立購物清單、數量、分類、完成狀態與目的地推薦品。
+- 附近與主題搜尋採 Google Maps URLs，無需 API key；即時內嵌店家結果留待 Places API 計費方案確認後再做。
+- DOM 驗證擴充至景點清單開關、地圖鎖定切換、探索捷徑及購物清單 persistence。

@@ -38,6 +38,7 @@
     this.layers = [];
     this.markers = {};
     this.pickMode = false;
+    this.interactionEnabled = false;
     this.init();
   }
 
@@ -117,6 +118,21 @@
   TravelMap.prototype.setPickMode = function (enabled) {
     this.pickMode = Boolean(enabled);
     if (this.element) this.element.classList.toggle("is-picking", this.pickMode);
+  };
+
+  TravelMap.prototype.setInteraction = function (enabled) {
+    this.interactionEnabled = Boolean(enabled);
+    if (!this.map) return;
+    ["dragging", "touchZoom", "doubleClickZoom", "scrollWheelZoom", "boxZoom", "keyboard"].forEach(function (handler) {
+      if (!this.map[handler]) return;
+      if (this.interactionEnabled) this.map[handler].enable();
+      else this.map[handler].disable();
+    }, this);
+    if (this.map.tap) {
+      if (this.interactionEnabled) this.map.tap.enable();
+      else this.map.tap.disable();
+    }
+    if (this.element) this.element.classList.toggle("is-interactive", this.interactionEnabled);
   };
 
   TravelMap.prototype.locate = function () {
