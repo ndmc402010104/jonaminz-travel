@@ -2,6 +2,16 @@
 
 更新：2026-07-23
 
+## LayoutMetrics capability
+
+- Travel 已改由 window.Jonaminz.layout 的 layout.metrics@1 決定地圖觸控守衛，不含自己的 matchMedia／桌機斷點。
+- 桌機滑鼠可預設直接操作地圖；手機與任何含 coarse pointer 的混合裝置維持預設鎖定。
+- SDK 未載入、未授權、degraded 或逾時時安全退回鎖定，頁面仍可正常滑動。
+- 「操作地圖／完成操作」固定在地圖右上同一位置；桌機不需要顯示操作按鈕。
+- 程式與模擬測試已通過；正式 grant 仍待 Core Worker 部署 revision 6。
+
+
+
 ## 可用
 
 - 建立與切換旅行。
