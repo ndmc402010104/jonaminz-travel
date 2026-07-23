@@ -35,6 +35,7 @@
     wizardPageCount: 0,
     wizardProgress: "",
     wizardError: "",
+    mapInteractionEnabled: false,
     wizardDraft: { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" }
   };
 
@@ -84,6 +85,12 @@
       stop.completed = Boolean(stop.completed);
     });
     value.checklist.forEach(function (item) { item.done = Boolean(item.done); });
+    value.shoppingItems.forEach(function (item) {
+      item.title = item.title || "";
+      item.group = item.group || "想買";
+      item.quantity = Math.max(1, Number(item.quantity) || 1);
+      item.done = Boolean(item.done);
+    });
     value.version = 4;
     if (value.activeTripId && !value.trips.some(function (trip) { return trip.id === value.activeTripId; })) {
       value.activeTripId = value.trips.length ? value.trips[0].id : null;
@@ -124,6 +131,27 @@
 
   function tripImports(tripId) {
     return state.importItems.filter(function (item) { return item.tripId === tripId && item.status === "pending"; });
+  }
+
+  function tripShopping(tripId) {
+    return state.shoppingItems.filter(function (item) { return item.tripId === tripId; });
+  }
+
+  function addShoppingItem(tripId, title, group, quantity) {
+    if (!title) return;
+    if (state.shoppingItems.some(function (item) { return item.tripId === tripId && item.title === title; })) return;
+    state.shoppingItems.push({ id: uid(), tripId: tripId, title: title, group: group || "想買", quantity: Math.max(1, Number(quantity) || 1), done: false });
+    saveState();
+  }
+
+  function toggleShoppingItem(itemId) {
+    var item = state.shoppingItems.filter(function (candidate) { return candidate.id === itemId; })[0];
+    if (item) { item.done = !item.done; saveState(); }
+  }
+
+  function deleteShoppingItem(itemId) {
+    state.shoppingItems = state.shoppingItems.filter(function (item) { return item.id !== itemId; });
+    saveState();
   }
 
   function dayStops(dayId) {
@@ -575,16 +603,27 @@
     return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query);
   }
 
-  function googleRouteUrl(stops) {
+  function googleRouteUrl(stops, mode) {
     var points = stops.map(function (stop) { return placeById(stop.sourcePlaceId); }).filter(Boolean);
     if (!points.length) return "https://www.google.com/maps";
     function point(place) {
       return Number.isFinite(place.lat) && Number.isFinite(place.lng) ? place.lat + "," + place.lng : [place.title, place.address].filter(Boolean).join(" ");
     }
     if (points.length === 1) return googleSearchUrl(points[0]);
-    var params = ["api=1", "origin=" + encodeURIComponent(point(points[0])), "destination=" + encodeURIComponent(point(points[points.length - 1])), "travelmode=walking"];
+    var params = ["api=1", "origin=" + encodeURIComponent(point(points[0])), "destination=" + encodeURIComponent(point(points[points.length - 1])), "travelmode=" + encodeURIComponent(mode || "walking")];
     if (points.length > 2) params.push("waypoints=" + encodeURIComponent(points.slice(1, -1).map(point).join("|")));
     return "https://www.google.com/maps/dir/?" + params.join("&");
+  }
+
+  function googleExploreUrl(query) {
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query);
+  }
+
+  function exploreAnchor(trip, days) {
+    var selected = days.filter(function (day) { return day.id === uiState.mapDayId; })[0] || days[0];
+    var firstStop = selected ? dayStops(selected.id)[0] : null;
+    var place = firstStop ? placeById(firstStop.sourcePlaceId) : null;
+    return (place && (place.address || place.title)) || trip.destination || trip.title;
   }
 
   function renderTripBar(root) {
@@ -625,7 +664,7 @@
   }
 
   function renderHero(trip, unassignedCount, assignedCount, dayCount) {
-    return '<div class="builder-hero"><div><small>MAP-CENTERED JOURNEY BUILDER</small><h1>今天去哪裡，<br>一眼就知道。</h1><p>從素材箱安排景點，補上時間與移動方式；地圖會跟著每日順序畫出路線。</p><span class="phase-chip">' + (trip.templateId ? "PAST TRIP · 2025.10.24–10.26" : "PLANNING · 可隨時調整") + '</span></div><div class="builder-summary"><small>CURRENT TRIP</small><h3>' + escapeHtml(trip.title) + "</h3><div><span>已安排景點</span><b>" + assignedCount + "</b></div><div><span>未安排素材</span><b>" + unassignedCount + "</b></div><div><span>行程天數</span><b>" + dayCount + '</b></div><button type="button" class="trip-delete" data-delete-trip="' + trip.id + '">刪除這趟旅行</button></div></div>';
+    return '<div class="builder-hero"><div><small>MAP-CENTERED JOURNEY BUILDER</small><h1>今天去哪裡，<br>一眼就知道。</h1><p>從景點清單安排景點，補上時間與移動方式；地圖會跟著每日順序畫出路線。</p><span class="phase-chip">' + (trip.templateId ? "PAST TRIP · 2025.10.24–10.26" : "PLANNING · 可隨時調整") + '</span></div><div class="builder-summary"><small>CURRENT TRIP</small><h3>' + escapeHtml(trip.title) + "</h3><div><span>已安排景點</span><b>" + assignedCount + "</b></div><div><span>待安排景點</span><b>" + unassignedCount + "</b></div><div><span>行程天數</span><b>" + dayCount + '</b></div><button type="button" class="trip-delete" data-delete-trip="' + trip.id + '">刪除這趟旅行</button></div></div>';
   }
 
   function renderToolbar() {
@@ -637,7 +676,7 @@
 
   function renderAddPlaceForm() {
     if (!uiState.showAddPlace) return "";
-    return '<form class="inline-create-form place-create" data-new-place-form><input type="text" name="title" placeholder="景點／餐廳名稱" required><select name="category">' + categoryOptions("want") + '</select><input type="text" name="address" placeholder="地址（選填）"><div class="coordinate-row"><input type="number" step="any" name="lat" placeholder="緯度"><input type="number" step="any" name="lng" placeholder="經度"></div><textarea name="note" placeholder="營業時間、訂位或提醒"></textarea><button type="button" class="btn" data-variant="ghost" data-pick-new-place>⌖ 點地圖取座標</button><button type="submit" class="btn">加入素材箱</button></form>';
+    return '<form class="inline-create-form place-create" data-new-place-form><input type="text" name="title" placeholder="景點／餐廳名稱" required><select name="category">' + categoryOptions("want") + '</select><input type="text" name="address" placeholder="地址（選填）"><div class="coordinate-row"><input type="number" step="any" name="lat" placeholder="緯度"><input type="number" step="any" name="lng" placeholder="經度"></div><textarea name="note" placeholder="營業時間、訂位或提醒"></textarea><button type="button" class="btn" data-variant="ghost" data-pick-new-place>⌖ 點地圖取座標</button><button type="submit" class="btn">加入景點清單</button></form>';
   }
 
   function renderPlacePool(tripId, days) {
@@ -656,7 +695,7 @@
     var filters = ["all", "must", "want", "food", "shopping", "backup"].map(function (key) {
       return '<button type="button" data-place-filter="' + key + '" class="' + (uiState.categoryFilter === key ? "active" : "") + '">' + (key === "all" ? "全部" : CATEGORY_LABEL[key]) + "</button>";
     }).join("");
-    return '<aside class="place-pool-panel"><header><div><small>PLACE COLLECTION</small><h3>旅行素材箱</h3><p>先收藏，再排進最適合的一天。</p></div><b>' + all.length + '</b><button type="button" class="pool-close" data-toggle-mobile-pool aria-label="關閉素材箱">×</button></header><div class="pool-quick-actions"><button type="button" data-toggle-add-place>＋ 新增地點</button><span>' + all.length + ' 個待安排</span></div><div class="mobile-pool-search"><span>⌕</span><input type="text" data-search-input placeholder="搜尋景點、地址或備註" value="' + escapeHtml(uiState.searchQuery) + '"></div><div class="pool-filter-row">' + filters + "</div>" + renderAddPlaceForm() + '<div class="builder-place-pool">' + cards + "</div></aside>";
+    return '<aside class="place-pool-panel"><header><div><small>SAVED PLACES</small><h3>景點清單</h3><p>尚未排入日期的景點與餐廳。</p></div><b>' + all.length + '</b><button type="button" class="pool-close" data-toggle-mobile-pool aria-label="收起景點清單">×</button></header><div class="pool-quick-actions"><button type="button" data-toggle-add-place>＋ 新增地點</button><span>' + all.length + ' 個待安排</span></div><div class="mobile-pool-search"><span>⌕</span><input type="text" data-search-input placeholder="搜尋景點、地址或備註" value="' + escapeHtml(uiState.searchQuery) + '"></div><div class="pool-filter-row">' + filters + "</div>" + renderAddPlaceForm() + '<div class="builder-place-pool">' + cards + "</div></aside>";
   }
 
   function renderAddDayForm() {
@@ -677,13 +716,13 @@
       var stops = dayStops(day.id);
       var stopsHtml = stops.length ? stops.map(function (stop, index) {
         var place = placeById(stop.sourcePlaceId);
-        return '<article class="builder-stop' + (uiState.focusedPlaceId === stop.sourcePlaceId ? " is-focused" : "") + '" data-focus-place="' + stop.sourcePlaceId + '" style="--day-color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '"><div class="stop-rail"><span class="stop-number">' + String(index + 1).padStart(2, "0") + '</span><i></i></div><div class="stop-copy"><div class="stop-title-row"><b>' + escapeHtml(stop.title) + '</b><em>' + escapeHtml(CATEGORY_LABEL[stop.category] || "行程") + "</em></div>" + stopMeta(stop) + (place && place.address ? '<small class="stop-address">⌖ ' + escapeHtml(place.address) + "</small>" : "") + (stop.note ? '<p>' + escapeHtml(stop.note) + "</p>" : "") + '</div><div class="builder-stop-actions"><a class="stop-primary-action" href="' + (place ? googleSearchUrl(place) : "#") + '" target="_blank" rel="noopener">導航 ↗</a><button type="button" data-edit-stop="' + stop.id + '">調整</button><div class="stop-more-actions"><button type="button" data-edit-place="' + stop.sourcePlaceId + '" title="編輯地點">⌖</button><button type="button" data-move="up" data-stop-id="' + stop.id + '"' + (index === 0 ? " disabled" : "") + '>↑</button><button type="button" data-move="down" data-stop-id="' + stop.id + '"' + (index === stops.length - 1 ? " disabled" : "") + '>↓</button><button type="button" data-unassign="' + stop.id + '" title="移回素材箱">×</button></div></div></article>';
-      }).join("") : '<div class="day-empty-story"><span>＋</span><b>這天還留著一大片空白</b><p>打開素材箱，把想去的地方排進來。</p><button type="button" data-toggle-mobile-pool>從素材箱安排</button></div>';
+        return '<article class="builder-stop' + (uiState.focusedPlaceId === stop.sourcePlaceId ? " is-focused" : "") + '" data-focus-place="' + stop.sourcePlaceId + '" style="--day-color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '"><div class="stop-rail"><span class="stop-number">' + String(index + 1).padStart(2, "0") + '</span><i></i></div><div class="stop-copy"><div class="stop-title-row"><b>' + escapeHtml(stop.title) + '</b><em>' + escapeHtml(CATEGORY_LABEL[stop.category] || "行程") + "</em></div>" + stopMeta(stop) + (place && place.address ? '<small class="stop-address">⌖ ' + escapeHtml(place.address) + "</small>" : "") + (stop.note ? '<p>' + escapeHtml(stop.note) + "</p>" : "") + '</div><div class="builder-stop-actions"><a class="stop-primary-action" href="' + (place ? googleSearchUrl(place) : "#") + '" target="_blank" rel="noopener">導航 ↗</a><button type="button" data-edit-stop="' + stop.id + '">調整</button><div class="stop-more-actions"><button type="button" data-edit-place="' + stop.sourcePlaceId + '" title="編輯地點">⌖</button><button type="button" data-move="up" data-stop-id="' + stop.id + '"' + (index === 0 ? " disabled" : "") + '>↑</button><button type="button" data-move="down" data-stop-id="' + stop.id + '"' + (index === stops.length - 1 ? " disabled" : "") + '>↓</button><button type="button" data-unassign="' + stop.id + '" title="移回景點清單">×</button></div></div></article>';
+      }).join("") : '<div class="day-empty-story"><span>＋</span><b>這天還留著一大片空白</b><p>從景點清單把想去的地方排進來。</p><button type="button" data-toggle-mobile-pool>打開景點清單</button></div>';
       var selected = uiState.mapDayId === day.id || (uiState.mapDayId === "all" && dayIndex === 0);
       var timedStops = stops.filter(function (stop) { return Boolean(stop.time); }).length;
       return '<section class="builder-day-column' + (selected ? " is-selected" : "") + '" data-day-id="' + day.id + '" style="--day-color:' + DAY_COLORS[dayIndex % DAY_COLORS.length] + '"><header><div class="day-editor-number">0' + day.index + '</div><div class="day-editor-title"><small>' + escapeHtml(day.date ? formatDate(day.date) : "日期未定") + ' · DAY ' + day.index + '</small><h4>' + escapeHtml(day.title) + '</h4><p>' + stops.length + " 個停留 · " + timedStops + " 個已排時間</p></div><div class=\"day-actions\"><a href=\"" + googleRouteUrl(stops) + '" target="_blank" rel="noopener" class="day-route">整日導航 ↗</a><button type="button" class="icon-btn" data-delete-day="' + day.id + '" title="刪除這一天">×</button></div></header><div class="builder-stop-list">' + stopsHtml + "</div></section>";
     }).join("") : '<p class="builder-day-empty">還沒有天數，先新增一天。</p>';
-    return '<section class="journey-board-panel"><div class="journey-board-head"><div><small>DAY EDITOR</small><h3>路線與時間</h3></div><div><button type="button" class="btn" data-variant="ghost" data-toggle-mobile-pool>打開素材箱</button><button type="button" class="btn" data-variant="ghost" data-toggle-add-day>＋ 新增一天</button></div></div>' + renderAddDayForm() + '<div class="builder-day-board">' + columns + "</div></section>";
+    return '<section class="journey-board-panel"><div class="journey-board-head"><div><small>DAY EDITOR</small><h3>路線與時間</h3></div><div><button type="button" class="btn" data-variant="ghost" data-toggle-mobile-pool>景點清單</button><button type="button" class="btn" data-variant="ghost" data-toggle-add-day>＋ 新增一天</button></div></div>' + renderAddDayForm() + '<div class="builder-day-board">' + columns + "</div></section>";
   }
 
   function mapDaysModel(days) {
@@ -714,7 +753,7 @@
     var tabs = '<button type="button" data-map-day="all" class="' + (uiState.mapDayId === "all" ? "active" : "") + '">全程</button>' + days.map(function (day) {
       return '<button type="button" data-map-day="' + day.id + '" class="' + (uiState.mapDayId === day.id ? "active" : "") + '">D' + day.index + "</button>";
     }).join("");
-    return '<aside class="map-panel"><header><div><small>LIVE ROUTE MAP</small><h3>行程地圖</h3></div><span>' + visibleStops.length + " 個座標</span></header><div class=\"map-day-tabs\">" + tabs + '</div><div id="journey-map" class="journey-map" aria-label="行程互動地圖"></div><div class="map-actions"><button type="button" class="btn" data-variant="ghost" data-locate-me>⌖ 我的位置</button><a class="btn map-google" href="' + googleRouteUrl(routeStops) + '" target="_blank" rel="noopener">Google Maps 開始導航 ↗</a></div><p class="map-hint">' + (uiState.pickCoordinates ? "請直接點地圖，座標會帶入正在新增的景點。" : "點標記會同步醒目顯示行程卡片。") + "</p></aside>";
+    return '<aside class="map-panel"><header><div><small>LIVE ROUTE MAP</small><h3>行程地圖</h3></div><span>' + visibleStops.length + " 個座標</span></header><div class=\"map-day-tabs\">" + tabs + '</div><div class="map-stage' + (uiState.mapInteractionEnabled ? " is-unlocked" : "") + '"><div id="journey-map" class="journey-map" aria-label="行程互動地圖"></div><button type="button" class="map-interaction-lock" data-toggle-map-interaction><b>' + (uiState.mapInteractionEnabled ? "完成操作" : "操作地圖") + '</b><span>' + (uiState.mapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><div class="map-actions"><button type="button" class="btn" data-variant="ghost" data-locate-me>⌖ 我的位置</button><a class="btn map-google" href="' + googleRouteUrl(routeStops) + '" target="_blank" rel="noopener">Google Maps 開始導航 ↗</a></div><p class="map-hint">' + (uiState.pickCoordinates ? "請直接點地圖，座標會帶入正在新增的景點。" : "地圖預設鎖定，手機上下滑動時不會被攔住。") + "</p></aside>";
   }
 
   function renderPlaceEditor() {
@@ -729,13 +768,14 @@
     var place = placeById(stop.sourcePlaceId);
     var tripId = place ? place.tripId : state.activeTripId;
     var dayOptions = tripDays(tripId).map(function (day) { return '<option value="' + day.id + '"' + (day.id === stop.dayId ? " selected" : "") + '>Day ' + day.index + " · " + escapeHtml(day.title) + "</option>"; }).join("");
-    return '<div class="editor-backdrop" data-close-editor><section class="editor-sheet" role="dialog" aria-modal="true" aria-labelledby="stop-editor-title" data-editor-sheet><header><div><small>STOP</small><h3 id="stop-editor-title">' + escapeHtml(stop.title) + '</h3></div><button type="button" class="editor-close" data-close-editor>×</button></header><form data-edit-stop-form data-stop-id="' + stop.id + '"><label>安排日期<select name="dayId">' + dayOptions + '</select></label><div class="coordinate-row"><label>抵達時間<input type="time" name="time" value="' + escapeHtml(stop.time) + '"></label><label>停留分鐘<input type="number" min="0" step="5" name="duration" value="' + stop.duration + '"></label></div><label>移動方式<select name="transport">' + transportOptions(stop.transport) + '</select></label><label>這次行程的備註<textarea name="note">' + escapeHtml(stop.note) + '</textarea></label><div class="editor-actions"><button type="button" class="danger-link" data-unassign="' + stop.id + '">移回素材箱</button><button type="submit" class="btn">儲存安排</button></div></form></section></div>';
+    return '<div class="editor-backdrop" data-close-editor><section class="editor-sheet" role="dialog" aria-modal="true" aria-labelledby="stop-editor-title" data-editor-sheet><header><div><small>STOP</small><h3 id="stop-editor-title">' + escapeHtml(stop.title) + '</h3></div><button type="button" class="editor-close" data-close-editor>×</button></header><form data-edit-stop-form data-stop-id="' + stop.id + '"><label>安排日期<select name="dayId">' + dayOptions + '</select></label><div class="coordinate-row"><label>抵達時間<input type="time" name="time" value="' + escapeHtml(stop.time) + '"></label><label>停留分鐘<input type="number" min="0" step="5" name="duration" value="' + stop.duration + '"></label></div><label>移動方式<select name="transport">' + transportOptions(stop.transport) + '</select></label><label>這次行程的備註<textarea name="note">' + escapeHtml(stop.note) + '</textarea></label><div class="editor-actions"><button type="button" class="danger-link" data-unassign="' + stop.id + '">移回景點清單</button><button type="submit" class="btn">儲存安排</button></div></form></section></div>';
   }
 
   function renderAppNav() {
     var views = [
       { id: "overview", icon: "⌂", label: "旅行首頁" },
       { id: "plan", icon: "⌘", label: "規劃" },
+      { id: "explore", icon: "✦", label: "探索" },
       { id: "live", icon: "◎", label: "旅途中" },
       { id: "book", icon: "▤", label: "旅行書" }
     ];
@@ -786,7 +826,7 @@
       var active = selected && selected.id === day.id;
       return '<button type="button" data-map-day="' + day.id + '" class="' + (active ? "active" : "") + '" style="--day-color:' + DAY_COLORS[index % DAY_COLORS.length] + '"><i>0' + day.index + '</i><span><b>' + escapeHtml(day.title) + '</b><small>' + dayStops(day.id).length + " STOPS · " + escapeHtml(formatDate(day.date)) + "</small></span></button>";
     }).join("");
-    return '<section class="planner-masthead"><div class="planner-masthead-copy"><small>ITINERARY STUDIO · ' + escapeHtml(trip.destination || "JOURNEY") + '</small><h1>' + escapeHtml(trip.title) + '</h1><p>' + escapeHtml(trip.subtitle || "把收藏排成順路、好走、真的能帶著出發的每一天。") + '</p><div class="planner-metrics"><span><b>' + days.length + '</b> DAYS</span><span><b>' + totalStops + '</b> STOPS</span><span><b>' + unassignedCount + '</b> SAVED</span></div></div><div class="planner-route-card"><div class="route-card-head"><span>ROUTE INDEX</span><b>' + escapeHtml(tripDateRange(trip)) + '</b></div><div class="planner-day-strip">' + dayStrip + '</div><div class="route-card-foot"><button type="button" data-toggle-mobile-pool>＋ 打開旅行素材箱</button><button type="button" data-toggle-add-day>新增一天</button><button type="button" class="route-delete-trip" data-delete-trip="' + trip.id + '" aria-label="刪除旅行">•••</button></div></div></section>';
+    return '<section class="planner-masthead"><div class="planner-masthead-copy"><small>ITINERARY STUDIO · ' + escapeHtml(trip.destination || "JOURNEY") + '</small><h1>' + escapeHtml(trip.title) + '</h1><p>' + escapeHtml(trip.subtitle || "把收藏排成順路、好走、真的能帶著出發的每一天。") + '</p><div class="planner-metrics"><span><b>' + days.length + '</b> DAYS</span><span><b>' + totalStops + '</b> STOPS</span><span><b>' + unassignedCount + '</b> SAVED</span></div></div><div class="planner-route-card"><div class="route-card-head"><span>ROUTE INDEX</span><b>' + escapeHtml(tripDateRange(trip)) + '</b></div><div class="planner-day-strip">' + dayStrip + '</div><div class="route-card-foot"><button type="button" data-toggle-mobile-pool>＋ 景點清單</button><button type="button" data-toggle-add-day>新增一天</button><button type="button" class="route-delete-trip" data-delete-trip="' + trip.id + '" aria-label="刪除旅行">•••</button></div></div></section>';
   }
 
   function renderPlanner(trip, days) {
@@ -816,6 +856,72 @@
       '<div class="live-layout"><section class="live-timeline"><div class="section-kicker">TODAY · ' + escapeHtml(formatDate(selected.date)) + '</div>' + (timeline || '<p class="panel-empty">這一天還沒有景點。</p>') + '</section><div class="live-side">' + renderMapPanel(days) + '<section class="live-wallet"><header><small>QUICK ACCESS</small><h3>旅途錢包</h3></header>' + tripBookings(trip.id).map(renderBookingCard).join("") + "</section></div></div></section>";
   }
 
+  function shoppingRecommendations(trip) {
+    var destination = (trip.destination || trip.title || "").toLowerCase();
+    var items = [
+      { title: "地區限定伴手禮", group: "伴手禮" },
+      { title: "車站限定便當／零食", group: "途中補給" },
+      { title: "當地酒與限定飲料", group: "飲食" },
+      { title: "藥妝與日用品補貨", group: "藥妝" },
+      { title: "御城印／御朱印", group: "旅行紀念" }
+    ];
+    if (/札幌|北海道|sapporo|hokkaido/.test(destination)) {
+      items = [
+        { title: "SNOW CHEESE", group: "北海道限定" },
+        { title: "札幌農學校餅乾", group: "北海道限定" },
+        { title: "六花亭奶油葡萄夾心", group: "北海道限定" },
+        { title: "ROYCE 生巧克力", group: "北海道限定" },
+        { title: "美瑛選果玉米麵包", group: "機場限定" }
+      ].concat(items);
+    } else if (/大阪|京都|奈良|神戶|関西|關西|osaka|kyoto|kansai/.test(destination)) {
+      items = [
+        { title: "551 HORAI 豚まん", group: "關西限定" },
+        { title: "大阪限定零食", group: "關西限定" },
+        { title: "京都茶菓子", group: "京都伴手禮" },
+        { title: "百大名城御城印", group: "旅行紀念" }
+      ].concat(items);
+    }
+    return items;
+  }
+
+  function renderExplore(trip, days) {
+    var anchor = exploreAnchor(trip, days);
+    var selected = days.filter(function (day) { return day.id === uiState.mapDayId; })[0] || days[0];
+    var selectedStops = selected ? dayStops(selected.id) : [];
+    var nearby = [
+      { icon: "食", title: "附近餐飲", copy: "餐廳、咖啡與當地料理", query: "レストラン near " + anchor },
+      { icon: "景", title: "附近景點", copy: "臨時空檔可以順路去的地方", query: "観光スポット near " + anchor },
+      { icon: "買", title: "附近購物", copy: "商場、藥妝與伴手禮", query: "ショッピング near " + anchor },
+      { icon: "休", title: "附近休息", copy: "咖啡、便利商店與休息站", query: "カフェ コンビニ near " + anchor }
+    ].map(function (item) {
+      return '<a class="discovery-card" href="' + googleExploreUrl(item.query) + '" target="_blank" rel="noopener"><i>' + item.icon + '</i><div><b>' + item.title + '</b><span>' + item.copy + '</span><small>以 ' + escapeHtml(anchor) + " 為中心</small></div><em>↗</em></a>";
+    }).join("");
+    var themes = [
+      { icon: "城", title: "日本百大名城", copy: "原百名城與登城目標", query: "日本100名城 near " + anchor },
+      { icon: "続", title: "續百大名城", copy: "續日本100名城與印章", query: "続日本100名城 near " + anchor },
+      { icon: "朱", title: "御朱印地圖", copy: "神社、寺院與御朱印", query: "御朱印 near " + anchor },
+      { icon: "道", title: "道之驛地圖", copy: "自駕休息、農產與限定品", query: "道の駅 near " + anchor },
+      { icon: "築", title: "建築散步", copy: "名建築、庭園與文化財", query: "名建築 文化財 near " + anchor },
+      { icon: "巡", title: "主題巡禮", copy: "動漫、遊戲與拍攝地", query: "聖地巡礼 near " + anchor }
+    ].map(function (item) {
+      return '<a class="theme-map-card" href="' + googleExploreUrl(item.query) + '" target="_blank" rel="noopener"><i>' + item.icon + '</i><b>' + item.title + '</b><span>' + item.copy + '</span><em>開啟地圖 ↗</em></a>';
+    }).join("");
+    var shopping = tripShopping(trip.id);
+    var shoppingHtml = shopping.map(function (item) {
+      return '<article class="shopping-item' + (item.done ? " is-done" : "") + '"><button type="button" data-toggle-shopping="' + item.id + '">' + (item.done ? "✓" : "") + '</button><div><small>' + escapeHtml(item.group) + '</small><b>' + escapeHtml(item.title) + '</b></div><span>×' + item.quantity + '</span><button type="button" data-delete-shopping="' + item.id + '">×</button></article>';
+    }).join("");
+    var existingTitles = {};
+    shopping.forEach(function (item) { existingTitles[item.title] = true; });
+    var recommended = shoppingRecommendations(trip).map(function (item) {
+      return '<button type="button" class="shopping-recommendation' + (existingTitles[item.title] ? " added" : "") + '" data-add-shopping-recommendation="' + escapeHtml(item.title) + '" data-shopping-group="' + escapeHtml(item.group) + '"' + (existingTitles[item.title] ? " disabled" : "") + '><span>＋</span><div><b>' + escapeHtml(item.title) + '</b><small>' + escapeHtml(item.group) + "</small></div></button>";
+    }).join("");
+    return '<section class="explore-hub"><header class="explore-hero"><div><small>TRIP COMPANION · ' + escapeHtml(trip.destination || trip.title) + '</small><h1>旅行中真正會用到的工具</h1><p>附近探索交給 Google Maps；清單、主題與行程決策留在這趟旅行裡。</p></div><div class="explore-anchor"><small>目前探索中心</small><b>' + escapeHtml(anchor) + '</b><span>' + escapeHtml(selected ? "Day " + selected.index + " · " + selected.title : tripDateRange(trip)) + "</span></div></header>" +
+      '<section class="explore-section"><header><div><small>NEARBY NOW</small><h2>附近有什麼</h2></div><span>免 API key · 開啟 Google Maps</span></header><div class="discovery-grid">' + nearby + "</div></section>" +
+      '<section class="explore-section"><header><div><small>THEME MAPS</small><h2>主題地圖</h2></div><span>以目前地點為中心搜尋</span></header><div class="theme-map-grid">' + themes + "</div></section>" +
+      '<section class="transport-deck"><div><small>ROUTE COMPARE</small><h2>這一天怎麼移動</h2><p>' + escapeHtml(selected ? selected.title : "選擇一天後比較交通") + '</p></div><div class="transport-actions"><a href="' + googleRouteUrl(selectedStops, "transit") + '" target="_blank" rel="noopener"><i>電</i><b>大眾運輸</b><span>Google Maps ↗</span></a><a href="' + googleRouteUrl(selectedStops, "walking") + '" target="_blank" rel="noopener"><i>步</i><b>步行路線</b><span>Google Maps ↗</span></a><a href="' + googleRouteUrl(selectedStops, "driving") + '" target="_blank" rel="noopener"><i>車</i><b>自駕比較</b><span>Google Maps ↗</span></a><a href="https://japantravel.navitime.com/en/area/jp/route/" target="_blank" rel="noopener"><i>JR</i><b>JR Pass／轉乘</b><span>NAVITIME ↗</span></a></div></section>' +
+      '<section class="shopping-deck"><header><div><small>SHOPPING BOARD</small><h2>購物清單</h2></div><span>' + shopping.filter(function (item) { return item.done; }).length + "/" + shopping.length + ' 已買</span></header><form data-shopping-form><input name="title" required placeholder="想買什麼？"><select name="group"><option>伴手禮</option><option>藥妝</option><option>旅行紀念</option><option>途中補給</option><option>代購</option><option>其他</option></select><input type="number" name="quantity" min="1" value="1" aria-label="數量"><button type="submit">加入</button></form><div class="shopping-layout"><div class="shopping-list">' + (shoppingHtml || '<p class="panel-empty">還沒有購物項目，從右邊推薦加入或自己新增。</p>') + '</div><aside><small>DESTINATION PICKS</small><h3>這趟可以留意</h3><div class="recommendation-list">' + recommended + "</div></aside></div></section></section>";
+  }
+
   function renderTravelBook(trip, days) {
     var pages = days.map(function (day, dayIndex) {
       var stops = dayStops(day.id);
@@ -832,6 +938,7 @@
     var trip = state.trips.filter(function (item) { return item.id === state.activeTripId; })[0];
     var days = tripDays(trip.id);
     var content = uiState.activeView === "plan" ? renderPlanner(trip, days)
+      : uiState.activeView === "explore" ? renderExplore(trip, days)
       : uiState.activeView === "live" ? renderLiveTrip(trip, days)
       : uiState.activeView === "book" ? renderTravelBook(trip, days)
       : renderOverview(trip, days);
@@ -858,11 +965,12 @@
         uiState.pickCoordinates = false;
         mapController.setPickMode(false);
         var hint = root.querySelector(".map-hint");
-        if (hint) hint.textContent = "座標已帶入，補完名稱後即可加入素材箱。";
+        if (hint) hint.textContent = "座標已帶入，補完名稱後即可加入景點清單。";
       }
     });
     mapController.render({ days: mapDaysModel(days), focusedPlaceId: uiState.focusedPlaceId });
     mapController.setPickMode(uiState.pickCoordinates);
+    mapController.setInteraction(uiState.mapInteractionEnabled);
   }
 
   function render(root) {
@@ -931,9 +1039,21 @@
       if (acceptImport) { acceptImportItem(acceptImport.getAttribute("data-accept-import")); render(root); return; }
       var dismissImport = target.closest("[data-dismiss-import]");
       if (dismissImport) { dismissImportItem(dismissImport.getAttribute("data-dismiss-import")); render(root); return; }
+      var toggleShopping = target.closest("[data-toggle-shopping]");
+      if (toggleShopping) { toggleShoppingItem(toggleShopping.getAttribute("data-toggle-shopping")); render(root); return; }
+      var deleteShopping = target.closest("[data-delete-shopping]");
+      if (deleteShopping) { deleteShoppingItem(deleteShopping.getAttribute("data-delete-shopping")); render(root); return; }
+      var addRecommendation = target.closest("[data-add-shopping-recommendation]");
+      if (addRecommendation) {
+        addShoppingItem(state.activeTripId, addRecommendation.getAttribute("data-add-shopping-recommendation"), addRecommendation.getAttribute("data-shopping-group"), 1);
+        render(root);
+        return;
+      }
       var viewButton = target.closest("[data-view]");
       if (viewButton) {
         uiState.activeView = viewButton.getAttribute("data-view");
+        uiState.showMobilePool = false;
+        uiState.mapInteractionEnabled = false;
         if (uiState.activeView === "live" && !uiState.liveDayId) {
           var firstDay = tripDays(state.activeTripId)[0];
           uiState.liveDayId = firstDay ? firstDay.id : null;
@@ -981,7 +1101,7 @@
       }
       var deleteDayButton = target.closest("[data-delete-day]");
       if (deleteDayButton) {
-        if (window.confirm("刪除這一天？當天景點會回到未安排素材箱。")) { deleteDay(deleteDayButton.getAttribute("data-delete-day")); render(root); }
+        if (window.confirm("刪除這一天？當天景點會回到待安排的景點清單。")) { deleteDay(deleteDayButton.getAttribute("data-delete-day")); render(root); }
         return;
       }
       var deletePlaceButton = target.closest("[data-delete-place]");
@@ -1003,6 +1123,15 @@
       if (editStop) { uiState.editingStopId = editStop.getAttribute("data-edit-stop"); render(root); return; }
       var mapDay = target.closest("[data-map-day]");
       if (mapDay) { uiState.mapDayId = mapDay.getAttribute("data-map-day"); render(root); return; }
+      var mapInteraction = target.closest("[data-toggle-map-interaction]");
+      if (mapInteraction) {
+        uiState.mapInteractionEnabled = !uiState.mapInteractionEnabled;
+        if (mapController) mapController.setInteraction(uiState.mapInteractionEnabled);
+        var stage = root.querySelector(".map-stage");
+        if (stage) stage.classList.toggle("is-unlocked", uiState.mapInteractionEnabled);
+        mapInteraction.innerHTML = uiState.mapInteractionEnabled ? "<b>完成操作</b><span>鎖定後可繼續滑動頁面</span>" : "<b>操作地圖</b><span>點一下才可拖曳與縮放</span>";
+        return;
+      }
       if (target.closest("[data-locate-me]")) { if (mapController) mapController.locate(); return; }
       if (target.closest("[data-pick-new-place]")) {
         uiState.pickCoordinates = !uiState.pickCoordinates;
@@ -1063,6 +1192,8 @@
           sourceTripId: field(form, "sourceTripId") ? field(form, "sourceTripId").value : "",
           sourceDocument: uiState.wizardFile ? uiState.wizardFile.name : ""
         });
+      } else if (form.matches("[data-shopping-form]")) {
+        addShoppingItem(state.activeTripId, field(form, "title").value.trim(), field(form, "group").value, field(form, "quantity").value);
       } else if (form.matches("[data-new-place-form]")) {
         var placeTitle = field(form, "title").value.trim();
         if (placeTitle && state.activeTripId) createPlace(state.activeTripId, {
