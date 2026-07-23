@@ -9,18 +9,35 @@ Sapporo pack into localStorage as a normal completed trip on a fresh install.
 
   window.JonaminzTravelTemplates = [
     {
-      schemaVersion: 2,
+      schemaVersion: 3,
       templateId: "sapporo-2025-10",
-      templateVersion: 2,
+      templateVersion: 3,
       label: "快閃日本 3 日遊｜札幌",
       summary: "2025.10.24–10.26 · 已完成旅行",
       sourceDocument: "北海道_札幌.pdf",
       trip: {
         title: "快閃日本 3 日遊｜札幌",
+        subtitle: "初雪前的北國週末",
+        destination: "札幌・北海道",
         startDate: "2025-10-24",
         endDate: "2025-10-26",
-        status: "completed"
+        status: "completed",
+        bookStyle: "scrapbook"
       },
+      bookings: [
+        { key: "flight-out", type: "flight", title: "去程航班 FD242", date: "2025-10-24", meta: "桃園 → 新千歲", note: "請於起飛前再次確認航廈與報到時間" },
+        { key: "hotel", type: "hotel", title: "Swanky Hotel Otomo", date: "2025-10-24", endDate: "2025-10-26", meta: "札幌市中央區南6條西6丁目6-14", note: "15:00 check-in・10:00 check-out" },
+        { key: "flight-back", type: "flight", title: "回程航班 FD243", date: "2025-10-26", meta: "新千歲 → 桃園", note: "請於出發前再次確認航廈與報到時間" }
+      ],
+      checklist: [
+        { key: "passport", title: "護照與入境資料", group: "證件" },
+        { key: "flight", title: "確認去回程航班", group: "預訂" },
+        { key: "hotel", title: "下載住宿確認資料", group: "預訂" },
+        { key: "internet", title: "準備網路／SIM", group: "通訊" },
+        { key: "money", title: "日幣、信用卡與交通卡", group: "金流" },
+        { key: "weather", title: "出發前確認札幌氣溫", group: "行李" },
+        { key: "shopping", title: "整理代購與購物清單", group: "購物" }
+      ],
       places: [
         { key: "new-chitose", title: "新千歲機場", category: "must", address: "北海道千歲市美々", lat: 42.7752, lng: 141.6923, note: "FD242／FD243，T1" },
         { key: "sapporo-station", title: "札幌車站", category: "must", address: "札幌市北區北6條西4丁目", lat: 43.0687, lng: 141.3508, note: "Day 1 先寄放行李" },
