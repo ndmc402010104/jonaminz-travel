@@ -26,7 +26,16 @@
     editingStopId: null,
     pickCoordinates: false,
     liveDayId: null,
-    showMobilePool: false
+    showMobilePool: false,
+    showTripWizard: false,
+    wizardStep: 1,
+    wizardMethod: "blank",
+    wizardFile: null,
+    wizardPages: [],
+    wizardPageCount: 0,
+    wizardProgress: "",
+    wizardError: "",
+    wizardDraft: { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" }
   };
 
   function uid() {
@@ -34,7 +43,7 @@
   }
 
   function emptyState() {
-    return { version: 3, trips: [], places: [], days: [], stops: [], bookings: [], checklist: [], memories: [], activeTripId: null, dismissedTemplateIds: [] };
+    return { version: 4, trips: [], places: [], days: [], stops: [], bookings: [], checklist: [], memories: [], guides: [], shoppingItems: [], importItems: [], activeTripId: null, dismissedTemplateIds: [] };
   }
 
   function finiteOrNull(value) {
@@ -48,7 +57,7 @@
   }
 
   function normalizeState(value) {
-    if (!value || [1, 2, 3].indexOf(value.version) === -1) return emptyState();
+    if (!value || [1, 2, 3, 4].indexOf(value.version) === -1) return emptyState();
     value.trips = Array.isArray(value.trips) ? value.trips : [];
     value.places = Array.isArray(value.places) ? value.places : [];
     value.days = Array.isArray(value.days) ? value.days : [];
@@ -56,6 +65,9 @@
     value.bookings = Array.isArray(value.bookings) ? value.bookings : [];
     value.checklist = Array.isArray(value.checklist) ? value.checklist : [];
     value.memories = Array.isArray(value.memories) ? value.memories : [];
+    value.guides = Array.isArray(value.guides) ? value.guides : [];
+    value.shoppingItems = Array.isArray(value.shoppingItems) ? value.shoppingItems : [];
+    value.importItems = Array.isArray(value.importItems) ? value.importItems : [];
     value.dismissedTemplateIds = Array.isArray(value.dismissedTemplateIds) ? value.dismissedTemplateIds : [];
     value.places.forEach(function (place) {
       place.category = place.category || "want";
@@ -72,7 +84,7 @@
       stop.completed = Boolean(stop.completed);
     });
     value.checklist.forEach(function (item) { item.done = Boolean(item.done); });
-    value.version = 3;
+    value.version = 4;
     if (value.activeTripId && !value.trips.some(function (trip) { return trip.id === value.activeTripId; })) {
       value.activeTripId = value.trips.length ? value.trips[0].id : null;
     }
@@ -106,6 +118,14 @@
     return state.checklist.filter(function (item) { return item.tripId === tripId; });
   }
 
+  function tripGuides(tripId) {
+    return state.guides.filter(function (item) { return item.tripId === tripId; });
+  }
+
+  function tripImports(tripId) {
+    return state.importItems.filter(function (item) { return item.tripId === tripId && item.status === "pending"; });
+  }
+
   function dayStops(dayId) {
     return state.stops.filter(function (stop) { return stop.dayId === dayId; }).sort(function (a, b) { return a.position - b.position; });
   }
@@ -133,6 +153,122 @@
     uiState.mapDayId = "all";
     uiState.activeView = "overview";
     saveState();
+  }
+
+  function dateRange(startDate, endDate) {
+    if (!startDate) return [];
+    var start = new Date(startDate + "T12:00:00");
+    var end = new Date((endDate || startDate) + "T12:00:00");
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start) return [];
+    var result = [];
+    for (var cursor = start, count = 0; cursor <= end && count < 45; cursor = new Date(cursor.getTime() + 86400000), count += 1) {
+      result.push(cursor.toISOString().slice(0, 10));
+    }
+    return result;
+  }
+
+  function createTripFromWizard(values) {
+    var tripId = uid();
+    var trip = {
+      id: tripId,
+      title: values.title,
+      subtitle: values.subtitle || "",
+      destination: values.destination || "",
+      startDate: values.startDate || null,
+      endDate: values.endDate || values.startDate || null,
+      status: "planning",
+      bookStyle: "scrapbook",
+      sourceDocument: values.sourceDocument || ""
+    };
+    state.trips.push(trip);
+    dateRange(trip.startDate, trip.endDate).forEach(function (date, index) {
+      state.days.push({ id: uid(), tripId: tripId, index: index + 1, date: date, title: "Day " + (index + 1) });
+    });
+    if (values.method === "copy" && values.sourceTripId) copyTripContents(values.sourceTripId, tripId);
+    if (values.method === "pdf") {
+      uiState.wizardPages.forEach(function (page) {
+        state.importItems.push({
+          id: uid(), tripId: tripId, status: "pending", page: page.page, category: page.category,
+          categoryLabel: page.categoryLabel, icon: page.icon, title: page.title, preview: page.preview,
+          content: page.content, sensitive: Boolean(page.sensitive), sourceDocument: values.sourceDocument || ""
+        });
+      });
+    }
+    state.activeTripId = tripId;
+    uiState.activeView = "overview";
+    uiState.mapDayId = "all";
+    closeTripWizard();
+    saveState();
+  }
+
+  function copyTripContents(sourceTripId, tripId) {
+    var placeMap = {};
+    tripPlaces(sourceTripId).forEach(function (source) {
+      var id = uid();
+      placeMap[source.id] = id;
+      state.places.push(Object.assign({}, source, { id: id, tripId: tripId, templateKey: null }));
+    });
+    var targetDays = tripDays(tripId);
+    var dayMap = {};
+    tripDays(sourceTripId).forEach(function (source, index) {
+      var target = targetDays[index];
+      if (!target) {
+        target = { id: uid(), tripId: tripId, index: index + 1, date: "", title: source.title };
+        state.days.push(target);
+      } else {
+        target.title = source.title;
+      }
+      dayMap[source.id] = target.id;
+      dayStops(source.id).forEach(function (stop) {
+        state.stops.push(Object.assign({}, stop, {
+          id: uid(), dayId: target.id, sourcePlaceId: placeMap[stop.sourcePlaceId] || null, completed: false
+        }));
+      });
+    });
+    tripBookings(sourceTripId).forEach(function (item) {
+      state.bookings.push(Object.assign({}, item, { id: uid(), tripId: tripId, date: "", endDate: "", templateKey: null }));
+    });
+    tripChecklist(sourceTripId).forEach(function (item) {
+      state.checklist.push(Object.assign({}, item, { id: uid(), tripId: tripId, done: false, templateKey: null }));
+    });
+    tripGuides(sourceTripId).forEach(function (item) {
+      state.guides.push(Object.assign({}, item, { id: uid(), tripId: tripId }));
+    });
+  }
+
+  function closeTripWizard() {
+    uiState.showTripWizard = false;
+    uiState.wizardStep = 1;
+    uiState.wizardMethod = "blank";
+    uiState.wizardFile = null;
+    uiState.wizardPages = [];
+    uiState.wizardPageCount = 0;
+    uiState.wizardProgress = "";
+    uiState.wizardError = "";
+    uiState.wizardDraft = { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" };
+  }
+
+  function acceptImportItem(itemId) {
+    var item = state.importItems.filter(function (candidate) { return candidate.id === itemId; })[0];
+    if (!item) return;
+    if (item.category === "flight" || item.category === "stay") {
+      state.bookings.push({
+        id: uid(), tripId: item.tripId, type: item.category === "stay" ? "hotel" : "flight",
+        title: item.title, date: "", endDate: "", meta: "PDF 第 " + item.page + " 頁", note: item.preview
+      });
+    } else {
+      state.guides.push({
+        id: uid(), tripId: item.tripId, category: item.category, categoryLabel: item.categoryLabel,
+        title: item.title, content: item.content, sourceDocument: item.sourceDocument, sourcePage: item.page
+      });
+    }
+    item.status = "accepted";
+    saveState();
+  }
+
+  function dismissImportItem(itemId) {
+    var item = state.importItems.filter(function (candidate) { return candidate.id === itemId; })[0];
+    if (item) { item.status = "dismissed"; saveState(); }
   }
 
   function getTemplate(templateId) {
@@ -281,6 +417,9 @@
     state.bookings = state.bookings.filter(function (booking) { return booking.tripId !== tripId; });
     state.checklist = state.checklist.filter(function (item) { return item.tripId !== tripId; });
     state.memories = state.memories.filter(function (memory) { return memory.tripId !== tripId; });
+    state.guides = state.guides.filter(function (item) { return item.tripId !== tripId; });
+    state.shoppingItems = state.shoppingItems.filter(function (item) { return item.tripId !== tripId; });
+    state.importItems = state.importItems.filter(function (item) { return item.tripId !== tripId; });
     state.trips = state.trips.filter(function (trip) { return trip.id !== tripId; });
     if (existing.templateId && state.dismissedTemplateIds.indexOf(existing.templateId) === -1) state.dismissedTemplateIds.push(existing.templateId);
     state.activeTripId = state.trips.length ? state.trips[0].id : null;
@@ -453,12 +592,36 @@
     var html = state.trips.map(function (trip) {
       return '<button type="button" class="trip-chip" data-select-trip="' + trip.id + '" data-active="' + (trip.id === state.activeTripId) + '">' + escapeHtml(trip.title) + "</button>";
     }).join("");
-    html += '<form class="new-trip-form trip-bar-create" data-new-trip-form><label class="sr-only" for="trip-bar-title">新旅行名稱</label><input id="trip-bar-title" type="text" name="title" placeholder="新增另一趟旅行" required><button type="submit" class="btn" data-variant="ghost">＋ 新旅行</button></form>';
+    html += '<button type="button" class="btn trip-bar-create" data-variant="ghost" data-open-trip-wizard>＋ 新旅行</button>';
     root.querySelector("[data-trip-bar]").innerHTML = html;
   }
 
   function renderWelcome() {
-    return '<section class="welcome-shell"><div class="welcome-copy"><small>JONAMINZ SHARED TRAVEL LIBRARY</small><h1>把散落的想去，<br>排成一趟真的旅程。</h1><p>景點只存一次，安排進每日行程後，就能在地圖上看路線並直接開始導航。</p><form class="welcome-form" data-new-trip-form><label for="welcome-trip-title">第一趟旅行</label><div><input id="welcome-trip-title" type="text" name="title" placeholder="例如：關西夏日旅行" required><button type="submit" class="btn">開始規劃 →</button></div></form><p class="local-note"><span>●</span>資料目前儲存在這台裝置。</p></div><div class="welcome-visual"><div class="welcome-book"><div class="book-meta"><span>TRAVEL BOOK · 01</span><b>PLANNING</b></div><div class="book-title"><small>FROM IDEAS TO MEMORIES</small><h2>Journey<br>Builder</h2></div><div class="route-preview"><article><i>01</i><div><b>收集素材</b><span>景點・餐廳・購物</span></div></article><article><i>02</i><div><b>排進每天</b><span>時間・移動・地圖</span></div></article><article class="future"><i>03</i><div><b>帶著走</b><span>手機導航</span></div></article></div><div class="book-foot"><span>JONATHAN × MINZ</span><span>LOCAL FIRST</span></div></div></div></section>';
+    return '<section class="welcome-shell"><div class="welcome-copy"><small>JONAMINZ SHARED TRAVEL LIBRARY</small><h1>把散落的想去，<br>排成一趟真的旅程。</h1><p>從空白開始、複製以前的玩法，或把現有 PDF 變成可整理的旅行資料。</p><button type="button" class="btn welcome-start" data-open-trip-wizard>建立第一趟旅行 →</button><p class="local-note"><span>●</span>PDF 只在這台裝置解析，不會上傳。</p></div><div class="welcome-visual"><div class="welcome-book"><div class="book-meta"><span>TRAVEL BOOK · 01</span><b>PLANNING</b></div><div class="book-title"><small>FROM IDEAS TO MEMORIES</small><h2>Journey<br>Builder</h2></div><div class="route-preview"><article><i>01</i><div><b>收集素材</b><span>景點・餐廳・購物</span></div></article><article><i>02</i><div><b>排進每天</b><span>時間・移動・地圖</span></div></article><article class="future"><i>03</i><div><b>帶著走</b><span>手機導航</span></div></article></div><div class="book-foot"><span>JONATHAN × MINZ</span><span>LOCAL FIRST</span></div></div></div></section>';
+  }
+
+  function renderTripWizard() {
+    if (!uiState.showTripWizard) return "";
+    var draft = uiState.wizardDraft;
+    var methodCards = [
+      { id: "blank", icon: "＋", title: "空白旅行", copy: "輸入日期，自動建立每天骨架。" },
+      { id: "copy", icon: "⧉", title: "複製舊旅行", copy: "保留景點、順序與攻略，再換日期。" },
+      { id: "pdf", icon: "PDF", title: "匯入旅行書", copy: "在手機本機讀取 PDF，逐頁分類後由你確認。" }
+    ].map(function (method) {
+      return '<button type="button" class="wizard-method' + (uiState.wizardMethod === method.id ? " active" : "") + '" data-wizard-method="' + method.id + '"><i>' + method.icon + '</i><b>' + method.title + '</b><span>' + method.copy + "</span></button>";
+    }).join("");
+    var tripOptions = state.trips.map(function (trip) {
+      return '<option value="' + trip.id + '"' + (draft.sourceTripId === trip.id ? " selected" : "") + ">" + escapeHtml(trip.title) + "</option>";
+    }).join("");
+    var pdfArea = uiState.wizardMethod === "pdf" ? '<div class="wizard-pdf"><label class="pdf-drop"><input type="file" name="pdfFile" accept="application/pdf"><b>' + escapeHtml(uiState.wizardFile ? uiState.wizardFile.name : "選擇 PDF 旅行書") + '</b><span>檔案留在本機；只保存遮蔽過的文字摘要。</span></label>' +
+      '<button type="button" class="btn" data-parse-pdf' + (!uiState.wizardFile || uiState.wizardProgress.indexOf("解析中") === 0 ? " disabled" : "") + '>分析 PDF</button>' +
+      (uiState.wizardProgress ? '<div class="pdf-progress"><span>' + escapeHtml(uiState.wizardProgress) + '</span><b>' + uiState.wizardPages.length + " 個可整理頁面</b></div>" : "") +
+      (uiState.wizardError ? '<p class="wizard-error">' + escapeHtml(uiState.wizardError) + "</p>" : "") + "</div>" : "";
+    var copyArea = uiState.wizardMethod === "copy" ? '<label>從哪趟複製<select name="sourceTripId" required>' + tripOptions + "</select></label>" : "";
+    var discovered = uiState.wizardPages.length ? '<div class="wizard-discovered"><b>辨識結果</b><div>' + uiState.wizardPages.slice(0, 8).map(function (page) {
+      return '<span>' + page.icon + " " + escapeHtml(page.categoryLabel) + " · P." + page.page + "</span>";
+    }).join("") + (uiState.wizardPages.length > 8 ? '<span>＋' + (uiState.wizardPages.length - 8) + " 頁</span>" : "") + "</div></div>" : "";
+    return '<div class="wizard-backdrop" data-close-trip-wizard><section class="trip-wizard" data-trip-wizard><header><div><small>NEW JOURNEY · 01</small><h2>建立一趟真正能帶著走的旅行</h2></div><button type="button" data-close-trip-wizard aria-label="關閉">×</button></header><form data-trip-wizard-form><div class="wizard-methods">' + methodCards + '</div><div class="wizard-fields"><label>旅行名稱<input name="title" required placeholder="例如：阪神京奈九日" value="' + escapeHtml(draft.title) + '"></label><label>目的地<input name="destination" placeholder="例如：大阪・京都・奈良" value="' + escapeHtml(draft.destination) + '"></label><label>出發日<input type="date" name="startDate" value="' + escapeHtml(draft.startDate) + '"></label><label>回程日<input type="date" name="endDate" value="' + escapeHtml(draft.endDate) + '"></label>' + copyArea + "</div>" + pdfArea + discovered + '<footer><span>建立後仍可調整；PDF 頁面不會直接塞進行程。</span><button type="submit" class="btn"' + (uiState.wizardMethod === "pdf" && !uiState.wizardPages.length ? " disabled" : "") + '>建立旅行 →</button></footer></form></section></div>';
   }
 
   function renderHero(trip, unassignedCount, assignedCount, dayCount) {
@@ -585,6 +748,8 @@
   function renderOverview(trip, days) {
     var bookings = tripBookings(trip.id);
     var checklist = tripChecklist(trip.id);
+    var guides = tripGuides(trip.id);
+    var imports = tripImports(trip.id);
     var doneCount = checklist.filter(function (item) { return item.done; }).length;
     var stopCount = days.reduce(function (count, day) { return count + dayStops(day.id).length; }, 0);
     var dayCards = days.map(function (day, dayIndex) {
@@ -596,10 +761,18 @@
     var checklistHtml = checklist.map(function (item) {
       return '<label class="check-item' + (item.done ? " is-done" : "") + '"><input type="checkbox" data-checklist="' + item.id + '"' + (item.done ? " checked" : "") + '><span></span><div><small>' + escapeHtml(item.group) + "</small><b>" + escapeHtml(item.title) + "</b></div></label>";
     }).join("");
+    var importHtml = imports.map(function (item) {
+      return '<article class="import-card"><span class="import-icon">' + escapeHtml(item.icon || "□") + '</span><div><small>' + escapeHtml(item.categoryLabel) + " · PDF P." + item.page + (item.sensitive ? " · 可能含敏感資料" : "") + '</small><b>' + escapeHtml(item.title) + '</b><p>' + escapeHtml(item.preview) + '</p></div><div class="import-actions"><button type="button" data-accept-import="' + item.id + '">收進資料庫</button><button type="button" data-dismiss-import="' + item.id + '">略過</button></div></article>';
+    }).join("");
+    var guideHtml = guides.slice(0, 8).map(function (guide) {
+      return '<article class="guide-card"><small>' + escapeHtml(guide.categoryLabel || "旅行攻略") + (guide.sourcePage ? " · P." + guide.sourcePage : "") + '</small><b>' + escapeHtml(guide.title) + '</b><p>' + escapeHtml((guide.content || "").slice(0, 150)) + "</p></article>";
+    }).join("");
     return '<section class="trip-overview">' +
       '<div class="travel-cover-card"><div class="cover-stamp">TRAVEL BOOK · ' + (trip.status === "completed" ? "ARCHIVE" : "PLANNING") + '</div><div class="cover-copy"><small>' + escapeHtml(trip.destination || "YOUR NEXT JOURNEY") + '</small><h1>' + escapeHtml(trip.title) + '</h1><p>' + escapeHtml(trip.subtitle || "把路線、預訂與回憶收進同一本旅行書。") + '</p><div class="cover-date">' + escapeHtml(tripDateRange(trip)) + '</div><button type="button" class="cover-action" data-view="plan">打開行程規劃 <span>→</span></button></div><div class="cover-collage"><div class="cover-photo cover-photo-a"><b>SAPPORO</b><span>43.0618° N</span></div><div class="cover-photo cover-photo-b"><i>03</i><b>DAYS</b></div><div class="cover-ticket"><small>JONATHAN × MINZ</small><b>CTS</b><span>WEEKEND JOURNEY</span></div></div></div>' +
       '<div class="overview-stats"><article><small>DAYS</small><b>' + days.length + '</b><span>天旅程</span></article><article><small>STOPS</small><b>' + stopCount + '</b><span>個停留</span></article><article><small>READY</small><b>' + doneCount + '/' + checklist.length + '</b><span>準備完成</span></article><article><small>BOOKINGS</small><b>' + bookings.length + '</b><span>筆預訂</span></article></div>' +
-      '<div class="overview-section-head"><div><small>THE JOURNEY</small><h2>三天，一條完整的北國路線</h2></div><button type="button" data-view="plan">編輯行程</button></div><div class="overview-days">' + dayCards + '</div>' +
+      '<div class="overview-section-head"><div><small>THE JOURNEY</small><h2>' + escapeHtml(days.length + " 天，從想法到可出發的完整路線") + '</h2></div><button type="button" data-view="plan">編輯行程</button></div><div class="overview-days">' + (dayCards || '<div class="empty-panel"><b>日期骨架還是空的</b><br>到規劃頁新增第一天。</div>') + '</div>' +
+      (imports.length ? '<section class="import-inbox"><header><div><small>IMPORT INBOX</small><h2>PDF 匯入收件匣</h2><p>系統只先分類，不擅自改行程。確認後才會放進旅行錢包或攻略庫。</p></div><b>' + imports.length + " 待確認</b></header><div>" + importHtml + "</div></section>" : "") +
+      (guides.length ? '<section class="guide-library"><header><div><small>TRAVEL DATABASE</small><h2>旅行攻略庫</h2></div><span>' + guides.length + " 篇</span></header><div>" + guideHtml + "</div></section>" : "") +
       '<div class="overview-grid"><section class="overview-panel"><header><div><small>TRAVEL WALLET</small><h2>預訂與住宿</h2></div><span>' + bookings.length + " 筆</span></header><div class=\"booking-list\">" + (bookings.length ? bookings.map(renderBookingCard).join("") : '<p class="panel-empty">還沒有預訂資料。</p>') + '</div></section><section class="overview-panel checklist-panel"><header><div><small>BEFORE YOU GO</small><h2>出發準備</h2></div><span>' + doneCount + "/" + checklist.length + '</span></header><div class="check-list">' + (checklistHtml || '<p class="panel-empty">目前沒有準備項目。</p>') + "</div></section></div></section>";
   }
 
@@ -643,14 +816,14 @@
 
   function renderBoard(root) {
     var board = root.querySelector("[data-board]");
-    if (!state.activeTripId) { board.innerHTML = renderWelcome(); return; }
+    if (!state.activeTripId) { board.innerHTML = renderWelcome() + renderTripWizard(); return; }
     var trip = state.trips.filter(function (item) { return item.id === state.activeTripId; })[0];
     var days = tripDays(trip.id);
     var content = uiState.activeView === "plan" ? renderPlanner(trip, days)
       : uiState.activeView === "live" ? renderLiveTrip(trip, days)
       : uiState.activeView === "book" ? renderTravelBook(trip, days)
       : renderOverview(trip, days);
-    board.innerHTML = renderAppNav() + content + renderPlaceEditor() + renderStopEditor();
+    board.innerHTML = renderAppNav() + content + renderPlaceEditor() + renderStopEditor() + renderTripWizard();
   }
 
   function mountMap(root) {
@@ -703,6 +876,49 @@
   function bindEvents(root) {
     root.addEventListener("click", function (event) {
       var target = event.target;
+      if (target.closest("[data-open-trip-wizard]")) {
+        uiState.showTripWizard = true;
+        uiState.wizardMethod = "blank";
+        render(root);
+        return;
+      }
+      if (target.matches("[data-close-trip-wizard]")) {
+        closeTripWizard();
+        render(root);
+        return;
+      }
+      var wizardMethod = target.closest("[data-wizard-method]");
+      if (wizardMethod) {
+        uiState.wizardMethod = wizardMethod.getAttribute("data-wizard-method");
+        uiState.wizardError = "";
+        render(root);
+        return;
+      }
+      if (target.closest("[data-parse-pdf]")) {
+        if (!uiState.wizardFile || !window.JonaminzTravelPdfImport) return;
+        uiState.wizardProgress = "解析中 · 準備檔案";
+        uiState.wizardError = "";
+        render(root);
+        window.JonaminzTravelPdfImport.parseFile(uiState.wizardFile, function (page, total) {
+          uiState.wizardProgress = "解析中 · " + page + " / " + total + " 頁";
+          var progress = root.querySelector(".pdf-progress span");
+          if (progress) progress.textContent = uiState.wizardProgress;
+        }).then(function (result) {
+          uiState.wizardPages = result.pages;
+          uiState.wizardPageCount = result.pageCount;
+          uiState.wizardProgress = "完成 · 共 " + result.pageCount + " 頁";
+          render(root);
+        }).catch(function (error) {
+          uiState.wizardError = "這份 PDF 暫時讀不到：" + (error && error.message ? error.message : "未知錯誤");
+          uiState.wizardProgress = "";
+          render(root);
+        });
+        return;
+      }
+      var acceptImport = target.closest("[data-accept-import]");
+      if (acceptImport) { acceptImportItem(acceptImport.getAttribute("data-accept-import")); render(root); return; }
+      var dismissImport = target.closest("[data-dismiss-import]");
+      if (dismissImport) { dismissImportItem(dismissImport.getAttribute("data-dismiss-import")); render(root); return; }
       var viewButton = target.closest("[data-view]");
       if (viewButton) {
         uiState.activeView = viewButton.getAttribute("data-view");
@@ -795,10 +1011,24 @@
     });
 
     root.addEventListener("input", function (event) {
+      if (event.target.closest("[data-trip-wizard-form]") && event.target.name && Object.prototype.hasOwnProperty.call(uiState.wizardDraft, event.target.name)) {
+        uiState.wizardDraft[event.target.name] = event.target.value;
+      }
       if (event.target.matches("[data-search-input]")) { uiState.searchQuery = event.target.value; render(root); }
     });
 
     root.addEventListener("change", function (event) {
+      if (event.target.matches('input[name="pdfFile"]')) {
+        uiState.wizardFile = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+        uiState.wizardPages = [];
+        uiState.wizardProgress = "";
+        uiState.wizardError = "";
+        render(root);
+        return;
+      }
+      if (event.target.closest("[data-trip-wizard-form]") && event.target.name && Object.prototype.hasOwnProperty.call(uiState.wizardDraft, event.target.name)) {
+        uiState.wizardDraft[event.target.name] = event.target.value;
+      }
       var checklist = event.target.closest("[data-checklist]");
       if (checklist) { toggleChecklistItem(checklist.getAttribute("data-checklist")); render(root); return; }
       var select = event.target.closest("[data-assign-select]");
@@ -811,6 +1041,16 @@
       if (form.matches("[data-new-trip-form]")) {
         var tripTitle = field(form, "title").value.trim();
         if (tripTitle) createTrip(tripTitle);
+      } else if (form.matches("[data-trip-wizard-form]")) {
+        createTripFromWizard({
+          method: uiState.wizardMethod,
+          title: field(form, "title").value.trim(),
+          destination: field(form, "destination").value.trim(),
+          startDate: field(form, "startDate").value,
+          endDate: field(form, "endDate").value,
+          sourceTripId: field(form, "sourceTripId") ? field(form, "sourceTripId").value : "",
+          sourceDocument: uiState.wizardFile ? uiState.wizardFile.name : ""
+        });
       } else if (form.matches("[data-new-place-form]")) {
         var placeTitle = field(form, "title").value.trim();
         if (placeTitle && state.activeTripId) createPlace(state.activeTripId, {
