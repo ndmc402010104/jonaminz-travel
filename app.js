@@ -16,7 +16,6 @@
   var state = null;
   var mapController = null;
   var castleMapController = null;
-  var DESKTOP_MAP_QUERY = "(min-width: 981px) and (hover: hover) and (pointer: fine)";
   var uiState = {
     activeView: "overview",
     searchQuery: "",
@@ -44,36 +43,6 @@
     castleSearch: "",
     wizardDraft: { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" }
   };
-
-  function isDesktopMapMode() {
-    return Boolean(window.matchMedia && window.matchMedia(DESKTOP_MAP_QUERY).matches);
-  }
-
-  function mapInteractionEnabled(manualEnabled) {
-    return isDesktopMapMode() || Boolean(manualEnabled);
-  }
-
-  function mapStageClass(manualEnabled, extraClass) {
-    return "map-stage" + (extraClass ? " " + extraClass : "") + (mapInteractionEnabled(manualEnabled) ? " is-unlocked" : "");
-  }
-
-  function mapInteractionHint() {
-    return isDesktopMapMode()
-      ? "電腦版地圖可直接拖曳、縮放與點選。"
-      : "地圖預設鎖定，手機上下滑動時不會被攔住。";
-  }
-
-  function syncResponsiveMapInteraction(root) {
-    var desktop = isDesktopMapMode();
-    if (mapController) mapController.setInteraction(desktop || uiState.mapInteractionEnabled);
-    if (castleMapController) castleMapController.setInteraction(desktop || uiState.castleMapInteractionEnabled);
-    var journeyStage = root.querySelector(".map-stage:not(.castle-map-stage)");
-    var castleStage = root.querySelector(".castle-map-stage");
-    if (journeyStage) journeyStage.classList.toggle("is-unlocked", desktop || uiState.mapInteractionEnabled);
-    if (castleStage) castleStage.classList.toggle("is-unlocked", desktop || uiState.castleMapInteractionEnabled);
-    var hint = root.querySelector(".map-hint");
-    if (hint && !uiState.pickCoordinates) hint.textContent = mapInteractionHint();
-  }
 
   function uid() {
     return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
@@ -811,7 +780,7 @@
     var tabs = '<button type="button" data-map-day="all" class="' + (uiState.mapDayId === "all" ? "active" : "") + '">全程</button>' + days.map(function (day) {
       return '<button type="button" data-map-day="' + day.id + '" class="' + (uiState.mapDayId === day.id ? "active" : "") + '">D' + day.index + "</button>";
     }).join("");
-    return '<aside class="map-panel"><header><div><small>LIVE ROUTE MAP</small><h3>行程地圖</h3></div><span>' + visibleStops.length + " 個座標</span></header><div class=\"map-day-tabs\">" + tabs + '</div><div class="' + mapStageClass(uiState.mapInteractionEnabled) + '"><div id="journey-map" class="journey-map" aria-label="行程互動地圖"></div><button type="button" class="map-interaction-lock" data-toggle-map-interaction><b>' + (uiState.mapInteractionEnabled ? "完成操作" : "操作地圖") + '</b><span>' + (uiState.mapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><div class="map-actions"><button type="button" class="btn" data-variant="ghost" data-locate-me>⌖ 我的位置</button><a class="btn map-google" href="' + googleRouteUrl(routeStops) + '" target="_blank" rel="noopener">Google Maps 開始導航 ↗</a></div><p class="map-hint">' + (uiState.pickCoordinates ? "請直接點地圖，座標會帶入正在新增的景點。" : mapInteractionHint()) + "</p></aside>";
+    return '<aside class="map-panel"><header><div><small>LIVE ROUTE MAP</small><h3>行程地圖</h3></div><span>' + visibleStops.length + " 個座標</span></header><div class=\"map-day-tabs\">" + tabs + '</div><div class="map-stage' + (uiState.mapInteractionEnabled ? " is-unlocked" : "") + '"><div id="journey-map" class="journey-map" aria-label="行程互動地圖"></div><button type="button" class="map-interaction-lock" data-toggle-map-interaction><b>' + (uiState.mapInteractionEnabled ? "完成操作" : "操作地圖") + '</b><span>' + (uiState.mapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><div class="map-actions"><button type="button" class="btn" data-variant="ghost" data-locate-me>⌖ 我的位置</button><a class="btn map-google" href="' + googleRouteUrl(routeStops) + '" target="_blank" rel="noopener">Google Maps 開始導航 ↗</a></div><p class="map-hint">' + (uiState.pickCoordinates ? "請直接點地圖，座標會帶入正在新增的景點。" : "地圖預設鎖定，手機上下滑動時不會被攔住。") + "</p></aside>";
   }
 
   function renderPlaceEditor() {
@@ -973,7 +942,7 @@
       var isVisited = Boolean(visited[castle.no]);
       return '<article class="castle-card' + (isVisited ? " is-visited" : "") + '" id="castle-' + castle.no + '"><button type="button" class="castle-check" data-toggle-castle-visit="' + castle.no + '" aria-label="' + (isVisited ? "取消到訪 " : "標記到訪 ") + escapeHtml(castle.name) + '">' + (isVisited ? "✓" : "") + '</button><span>' + String(castle.no).padStart(3, "0") + '</span><div><b>' + escapeHtml(castle.name) + '</b><small>' + escapeHtml(castle.location) + " · " + castleRegion(castle.no) + '</small></div><a href="' + castleGoogleUrl(castle) + '" target="_blank" rel="noopener">Google Maps ↗</a></article>';
     }).join("");
-    return '<section class="castle-atlas" id="castle-atlas"><header><div><small>JAPAN 100 FINE CASTLES · 1–100</small><h2>日本百大名城</h2><p>完整 100 城，不是附近搜尋。每一座都直接開啟 Google Maps。</p></div><div class="castle-progress"><b>' + visitedCount + '</b><span>/ 100 到訪</span></div></header><div class="castle-map-layout"><div class="castle-map-column"><div class="' + mapStageClass(uiState.castleMapInteractionEnabled, "castle-map-stage") + '"><div id="castle-map" class="castle-map" aria-label="日本百大名城總覽地圖"></div><button type="button" class="map-interaction-lock" data-toggle-castle-map><b>' + (uiState.castleMapInteractionEnabled ? "完成操作" : "操作名城地圖") + '</b><span>' + (uiState.castleMapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><p>名單依日本城郭協會編號；地圖座標為各城代表點。</p></div><div class="castle-directory"><div class="castle-toolbar"><div class="castle-search"><span>⌕</span><input type="search" data-castle-search placeholder="搜尋城名、所在地或編號" value="' + escapeHtml(uiState.castleSearch) + '"></div><div class="castle-filters">' + filters + '</div></div><div class="castle-list">' + (list || '<p class="panel-empty">找不到符合條件的名城。</p>') + "</div></div></div></section>";
+    return '<section class="castle-atlas" id="castle-atlas"><header><div><small>JAPAN 100 FINE CASTLES · 1–100</small><h2>日本百大名城</h2><p>完整 100 城，不是附近搜尋。每一座都直接開啟 Google Maps。</p></div><div class="castle-progress"><b>' + visitedCount + '</b><span>/ 100 到訪</span></div></header><div class="castle-map-layout"><div class="castle-map-column"><div class="map-stage castle-map-stage' + (uiState.castleMapInteractionEnabled ? " is-unlocked" : "") + '"><div id="castle-map" class="castle-map" aria-label="日本百大名城總覽地圖"></div><button type="button" class="map-interaction-lock" data-toggle-castle-map><b>' + (uiState.castleMapInteractionEnabled ? "完成操作" : "操作名城地圖") + '</b><span>' + (uiState.castleMapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><p>名單依日本城郭協會編號；地圖座標為各城代表點。</p></div><div class="castle-directory"><div class="castle-toolbar"><div class="castle-search"><span>⌕</span><input type="search" data-castle-search placeholder="搜尋城名、所在地或編號" value="' + escapeHtml(uiState.castleSearch) + '"></div><div class="castle-filters">' + filters + '</div></div><div class="castle-list">' + (list || '<p class="panel-empty">找不到符合條件的名城。</p>') + "</div></div></div></section>";
   }
 
   function renderExplore(trip, days) {
@@ -1061,7 +1030,7 @@
     });
     mapController.render({ days: mapDaysModel(days), focusedPlaceId: uiState.focusedPlaceId });
     mapController.setPickMode(uiState.pickCoordinates);
-    mapController.setInteraction(mapInteractionEnabled(uiState.mapInteractionEnabled));
+    mapController.setInteraction(uiState.mapInteractionEnabled);
   }
 
   function mountCastleMap(root) {
@@ -1093,7 +1062,7 @@
         };
       })
     });
-    castleMapController.setInteraction(mapInteractionEnabled(uiState.castleMapInteractionEnabled));
+    castleMapController.setInteraction(uiState.castleMapInteractionEnabled);
   }
 
   function render(root) {
@@ -1265,18 +1234,18 @@
       var mapInteraction = target.closest("[data-toggle-map-interaction]");
       if (mapInteraction) {
         uiState.mapInteractionEnabled = !uiState.mapInteractionEnabled;
-        if (mapController) mapController.setInteraction(mapInteractionEnabled(uiState.mapInteractionEnabled));
+        if (mapController) mapController.setInteraction(uiState.mapInteractionEnabled);
         var stage = root.querySelector(".map-stage");
-        if (stage) stage.classList.toggle("is-unlocked", mapInteractionEnabled(uiState.mapInteractionEnabled));
+        if (stage) stage.classList.toggle("is-unlocked", uiState.mapInteractionEnabled);
         mapInteraction.innerHTML = uiState.mapInteractionEnabled ? "<b>完成操作</b><span>鎖定後可繼續滑動頁面</span>" : "<b>操作地圖</b><span>點一下才可拖曳與縮放</span>";
         return;
       }
       var castleMapInteraction = target.closest("[data-toggle-castle-map]");
       if (castleMapInteraction) {
         uiState.castleMapInteractionEnabled = !uiState.castleMapInteractionEnabled;
-        if (castleMapController) castleMapController.setInteraction(mapInteractionEnabled(uiState.castleMapInteractionEnabled));
+        if (castleMapController) castleMapController.setInteraction(uiState.castleMapInteractionEnabled);
         var castleStage = root.querySelector(".castle-map-stage");
-        if (castleStage) castleStage.classList.toggle("is-unlocked", mapInteractionEnabled(uiState.castleMapInteractionEnabled));
+        if (castleStage) castleStage.classList.toggle("is-unlocked", uiState.castleMapInteractionEnabled);
         castleMapInteraction.innerHTML = uiState.castleMapInteractionEnabled ? "<b>完成操作</b><span>鎖定後可繼續滑動頁面</span>" : "<b>操作名城地圖</b><span>點一下才可拖曳與縮放</span>";
         return;
       }
@@ -1382,12 +1351,6 @@
     var root = document.getElementById("app-root");
     root.innerHTML = '<div class="trip-bar" data-trip-bar></div><div data-board></div>';
     bindEvents(root);
-    var desktopMapQuery = window.matchMedia ? window.matchMedia(DESKTOP_MAP_QUERY) : null;
-    if (desktopMapQuery) {
-      var handleMapModeChange = function () { syncResponsiveMapInteraction(root); };
-      if (desktopMapQuery.addEventListener) desktopMapQuery.addEventListener("change", handleMapModeChange);
-      else if (desktopMapQuery.addListener) desktopMapQuery.addListener(handleMapModeChange);
-    }
     render(root);
   }
 
