@@ -44,3 +44,12 @@
 - DOM 測試新增四模式、Checklist persistence、Live completion、Book generation 與 Book Style persistence。
 - 透過 PR #6 squash merge 至 `master`：`3366fb7e0b58bbb67bcd06fb26df45ad3a35f658`。
 - 正式頁驗收：Home 3 日／3 bookings／7 checklist、Live 10 stops／OSM tiles、Book 4 pages／3 styles，且無網站 console error。
+
+## 2026-07-23 — Mobile Journey Builder rebuild
+
+- 使用者手機截圖確認首頁方向正確，但 Plan 仍是桌機後台縮小版：三天全展開、Stop 工具列過量、進入後保留首頁 scroll、Chat launcher 覆蓋旅行書導覽。
+- 保留旅行首頁；手機 Plan 改為地圖＋單日行程 sheet，一次只顯示 map day 對應日期。
+- Stop 常駐操作縮減為導航與編輯；素材箱改成含搜尋／新增的獨立抽屜。
+- 模式切換與首頁「查看這天」會回到頁首。
+- 以已確認的 SDK class 將 Chat launcher／panel 移至底部 Travel navigation 上方。
+- DOM flow 新增單日 selection、map/day sync 與 mobile pool toggle 驗證。
