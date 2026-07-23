@@ -9,3 +9,4 @@
 - 改善 Journey Builder 說明、日期呈現、可及性與響應式版面。
 - 加入 v1 state 正規化，降低 localStorage 不完整造成的崩潰。
 - 建立 repo 內正式 AI_CONTEXT 紀錄。
+- 透過 PR #1 squash merge 至 `master`，合併 commit：`6e33a89f6d20331d51e89f1d144b4a5e96d1bbd3`。
