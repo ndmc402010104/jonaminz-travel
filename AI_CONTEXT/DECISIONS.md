@@ -27,3 +27,6 @@
 - 手機 Stop 預設只露出導航與編輯，刪除、Place 編輯、上下排序等次要工具不得整排常駐。
 - 任一模式或首頁日卡進入規劃時必須回到頁首，不能沿用首頁深處的 scroll position。
 - Jonaminz Chat launcher 在手機必須移到 Travel 底部導覽上方，五個 Travel mode 不得被覆蓋。
+- Travel 不得自行判斷輸入裝置；地圖是否需要觸控守衛只讀取 Core SDK layout.metrics@1 的 requiresTouchGuard。SDK 未載入、未授權、degraded 或逾時一律維持鎖定。
+- 「操作地圖」與「完成操作」必須使用同一個右上角錨點；desktop-pointer 預設直接操作且不顯示守衛按鈕，touch／hybrid 才提供手動解鎖。
+
