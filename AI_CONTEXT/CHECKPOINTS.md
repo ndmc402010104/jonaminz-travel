@@ -13,4 +13,5 @@
   - Place → Day → Assign → Move → Unassign → Reload 不回歸。
   - 360 px、768 px、桌機寬度不產生水平溢位。
   - 尚未實作功能均明確標示為下一階段。
-- Commit：完成 push 後補入。
+- Merge commit：`6e33a89f6d20331d51e89f1d144b4a5e96d1bbd3`（PR #1）。
+- 驗證：JavaScript 語法、contract JSON、CSS 大括號平衡與 GitHub 遠端差異檢查通過。
