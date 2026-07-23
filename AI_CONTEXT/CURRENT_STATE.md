@@ -21,7 +21,10 @@
 - Leaflet 互動地圖可切換全程／單日、顯示編號標記與日別折線，標記與 Stop 卡片同步。
 - 新增 Place 時可點地圖帶入座標。
 - 景點與每日／全程路線可用 Google Maps URL 開啟。
-- state schema v2 與 template v2 migration；只填補舊札幌資料缺少的欄位。
+- 旅行首頁顯示正式封面、每日摘要、預訂錢包、統計與可勾選的出發準備。
+- Live Trip 可切換每日、顯示下一站、完成進度、打卡完成與快速導航。
+- Book Studio 依 Trip／Day／Stop 自動生成 A4 書頁，提供三種 Book Style 與列印／存 PDF。
+- state schema v3 與 template v3 migration；Booking／Checklist 自動補入既有札幌旅行且不覆蓋手動資料。
 
 ## 尚未實作
 
@@ -29,5 +32,5 @@
 - Supabase／正式後端與 Storage。
 - Trip／Day 的重新命名。
 - 拖拉排序（目前以按鈕調序；跨日移動已支援）。
-- 旅行書生成、Book Studio、Page Master、Book Style。
-- 完整 Live Trip、票券、住宿與 Memory（外部 Google Maps 導航已支援）。
+- Book Studio 自由拖拉排版與逐頁 Page Master。
+- 正式票券附件、Booking 編輯、照片 Memory 與跨裝置同步。

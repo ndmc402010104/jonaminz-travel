@@ -35,3 +35,14 @@
 - Feature merge：`d014a3e77d0809efdf4da0063620cd4592fa3ea7`（PR #3）。
 - Static asset versioning：`61b5ee0c0879c145b3a68d8ba3bd0cadab7f639b`（PR #4）。
 - 正式頁驗收：26 markers、29 route/marker layers、OSM tiles 與 attribution 載入成功；桌機三欄比例為 280 / 439 / 515 px（1363 px viewport）。
+
+## C4 — 2026-07-23 Travel product shell
+
+- 驗收目標：
+  - 預設畫面是能理解整趟旅行的首頁，不是地圖 CRUD。
+  - 四模式導覽可進入 Home／Plan／Live／Book。
+  - Checklist、Stop completion、Book Style 可持久化。
+  - 舊 v2 札幌資料非破壞升級為 v3 並補入 Booking／Checklist。
+  - Book Studio 生成 1 個封面＋3 個日頁並可列印。
+- 驗證：syntax、舊 CRUD flow、map migration/edit flow、四模式產品 flow。
+- Merge commit：待 PR 合併後回填。
