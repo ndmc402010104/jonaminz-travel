@@ -39,6 +39,7 @@
     wizardError: "",
     mapInteractionEnabled: false,
     castleMapInteractionEnabled: false,
+    mapGuardUserOverridden: false,
     castleFilter: "all",
     castleSearch: "",
     wizardDraft: { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" }
@@ -1233,6 +1234,7 @@
       if (mapDay) { uiState.mapDayId = mapDay.getAttribute("data-map-day"); render(root); return; }
       var mapInteraction = target.closest("[data-toggle-map-interaction]");
       if (mapInteraction) {
+        uiState.mapGuardUserOverridden = true;   // 使用者手動決定，之後 SDK 不再自動覆蓋
         uiState.mapInteractionEnabled = !uiState.mapInteractionEnabled;
         if (mapController) mapController.setInteraction(uiState.mapInteractionEnabled);
         var stage = root.querySelector(".map-stage");
@@ -1242,6 +1244,7 @@
       }
       var castleMapInteraction = target.closest("[data-toggle-castle-map]");
       if (castleMapInteraction) {
+        uiState.mapGuardUserOverridden = true;   // 使用者手動決定，之後 SDK 不再自動覆蓋
         uiState.castleMapInteractionEnabled = !uiState.castleMapInteractionEnabled;
         if (castleMapController) castleMapController.setInteraction(uiState.castleMapInteractionEnabled);
         var castleStage = root.querySelector(".castle-map-stage");
@@ -1340,6 +1343,45 @@
     });
   }
 
+  // 觸控守衛（2026-07-23）：地圖預設鎖定與否，由 Jonaminz SDK layout.metrics@1 統一判斷——
+  // Travel 自己不做任何 matchMedia／桌機斷點。桌機純滑鼠(requiresTouchGuard=false)→預設可操作；
+  // 觸控／混合→維持鎖定。SDK 未載入／degraded／未授權／逾時→安全退回「地圖鎖定」（最保守）。
+  function applyMapGuard(locked) {
+    if (uiState.mapGuardUserOverridden) return;   // 使用者手動切過就交還控制權，不再自動覆蓋
+    var next = !locked;
+    var changed = uiState.mapInteractionEnabled !== next || uiState.castleMapInteractionEnabled !== next;
+    uiState.mapInteractionEnabled = next;
+    uiState.castleMapInteractionEnabled = next;
+    if (mapController) mapController.setInteraction(next);
+    if (castleMapController) castleMapController.setInteraction(next);
+    if (changed) {
+      var root = document.getElementById("app-root");
+      if (root) render(root);
+    }
+  }
+  function initTouchGuardFromSdk() {
+    var jz = window.Jonaminz;
+    if (!(jz && jz.layout && typeof jz.layout.whenReady === "function")) { applyMapGuard(true); return; }
+    var settled = false;
+    var timer = window.setTimeout(function () { if (!settled) { settled = true; applyMapGuard(true); } }, 6000);
+    jz.layout.whenReady().then(function (res) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      if (!res || !res.granted) { applyMapGuard(true); return; }
+      var m = (typeof jz.layout.getMetrics === "function") ? jz.layout.getMetrics() : null;
+      applyMapGuard(m ? m.requiresTouchGuard : true);
+      if (typeof jz.layout.subscribe === "function") {
+        jz.layout.subscribe(function (metrics) { if (metrics) applyMapGuard(metrics.requiresTouchGuard); });
+      }
+    }).catch(function () {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      applyMapGuard(true);
+    });
+  }
+
   function init() {
     state = loadState();
     TEMPLATES.forEach(function (template) {
@@ -1352,6 +1394,7 @@
     root.innerHTML = '<div class="trip-bar" data-trip-bar></div><div data-board></div>';
     bindEvents(root);
     render(root);
+    initTouchGuardFromSdk();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
