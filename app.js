@@ -40,6 +40,7 @@
     mapInteractionEnabled: false,
     castleMapInteractionEnabled: false,
     mapGuardUserOverridden: false,
+    mapTouchGuardRequired: true,
     castleFilter: "all",
     castleSearch: "",
     wizardDraft: { title: "", destination: "", startDate: "", endDate: "", sourceTripId: "" }
@@ -781,7 +782,7 @@
     var tabs = '<button type="button" data-map-day="all" class="' + (uiState.mapDayId === "all" ? "active" : "") + '">全程</button>' + days.map(function (day) {
       return '<button type="button" data-map-day="' + day.id + '" class="' + (uiState.mapDayId === day.id ? "active" : "") + '">D' + day.index + "</button>";
     }).join("");
-    return '<aside class="map-panel"><header><div><small>LIVE ROUTE MAP</small><h3>行程地圖</h3></div><span>' + visibleStops.length + " 個座標</span></header><div class=\"map-day-tabs\">" + tabs + '</div><div class="map-stage' + (uiState.mapInteractionEnabled ? " is-unlocked" : "") + '"><div id="journey-map" class="journey-map" aria-label="行程互動地圖"></div><button type="button" class="map-interaction-lock" data-toggle-map-interaction><b>' + (uiState.mapInteractionEnabled ? "完成操作" : "操作地圖") + '</b><span>' + (uiState.mapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><div class="map-actions"><button type="button" class="btn" data-variant="ghost" data-locate-me>⌖ 我的位置</button><a class="btn map-google" href="' + googleRouteUrl(routeStops) + '" target="_blank" rel="noopener">Google Maps 開始導航 ↗</a></div><p class="map-hint">' + (uiState.pickCoordinates ? "請直接點地圖，座標會帶入正在新增的景點。" : "地圖預設鎖定，手機上下滑動時不會被攔住。") + "</p></aside>";
+    return '<aside class="map-panel"><header><div><small>LIVE ROUTE MAP</small><h3>行程地圖</h3></div><span>' + visibleStops.length + " 個座標</span></header><div class=\"map-day-tabs\">" + tabs + '</div><div class="map-stage' + (uiState.mapInteractionEnabled ? " is-unlocked" : "") + (uiState.mapTouchGuardRequired ? " requires-touch-guard" : " no-touch-guard") + '"><div id="journey-map" class="journey-map" aria-label="行程互動地圖"></div><button type="button" class="map-interaction-lock" data-toggle-map-interaction><b>' + (uiState.mapInteractionEnabled ? "完成操作" : "操作地圖") + '</b><span>' + (uiState.mapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><div class="map-actions"><button type="button" class="btn" data-variant="ghost" data-locate-me>⌖ 我的位置</button><a class="btn map-google" href="' + googleRouteUrl(routeStops) + '" target="_blank" rel="noopener">Google Maps 開始導航 ↗</a></div><p class="map-hint">' + (uiState.pickCoordinates ? "請直接點地圖，座標會帶入正在新增的景點。" : "地圖預設鎖定，手機上下滑動時不會被攔住。") + "</p></aside>";
   }
 
   function renderPlaceEditor() {
@@ -943,7 +944,7 @@
       var isVisited = Boolean(visited[castle.no]);
       return '<article class="castle-card' + (isVisited ? " is-visited" : "") + '" id="castle-' + castle.no + '"><button type="button" class="castle-check" data-toggle-castle-visit="' + castle.no + '" aria-label="' + (isVisited ? "取消到訪 " : "標記到訪 ") + escapeHtml(castle.name) + '">' + (isVisited ? "✓" : "") + '</button><span>' + String(castle.no).padStart(3, "0") + '</span><div><b>' + escapeHtml(castle.name) + '</b><small>' + escapeHtml(castle.location) + " · " + castleRegion(castle.no) + '</small></div><a href="' + castleGoogleUrl(castle) + '" target="_blank" rel="noopener">Google Maps ↗</a></article>';
     }).join("");
-    return '<section class="castle-atlas" id="castle-atlas"><header><div><small>JAPAN 100 FINE CASTLES · 1–100</small><h2>日本百大名城</h2><p>完整 100 城，不是附近搜尋。每一座都直接開啟 Google Maps。</p></div><div class="castle-progress"><b>' + visitedCount + '</b><span>/ 100 到訪</span></div></header><div class="castle-map-layout"><div class="castle-map-column"><div class="map-stage castle-map-stage' + (uiState.castleMapInteractionEnabled ? " is-unlocked" : "") + '"><div id="castle-map" class="castle-map" aria-label="日本百大名城總覽地圖"></div><button type="button" class="map-interaction-lock" data-toggle-castle-map><b>' + (uiState.castleMapInteractionEnabled ? "完成操作" : "操作名城地圖") + '</b><span>' + (uiState.castleMapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><p>名單依日本城郭協會編號；地圖座標為各城代表點。</p></div><div class="castle-directory"><div class="castle-toolbar"><div class="castle-search"><span>⌕</span><input type="search" data-castle-search placeholder="搜尋城名、所在地或編號" value="' + escapeHtml(uiState.castleSearch) + '"></div><div class="castle-filters">' + filters + '</div></div><div class="castle-list">' + (list || '<p class="panel-empty">找不到符合條件的名城。</p>') + "</div></div></div></section>";
+    return '<section class="castle-atlas" id="castle-atlas"><header><div><small>JAPAN 100 FINE CASTLES · 1–100</small><h2>日本百大名城</h2><p>完整 100 城，不是附近搜尋。每一座都直接開啟 Google Maps。</p></div><div class="castle-progress"><b>' + visitedCount + '</b><span>/ 100 到訪</span></div></header><div class="castle-map-layout"><div class="castle-map-column"><div class="map-stage castle-map-stage' + (uiState.castleMapInteractionEnabled ? " is-unlocked" : "") + (uiState.mapTouchGuardRequired ? " requires-touch-guard" : " no-touch-guard") + '"><div id="castle-map" class="castle-map" aria-label="日本百大名城總覽地圖"></div><button type="button" class="map-interaction-lock" data-toggle-castle-map><b>' + (uiState.castleMapInteractionEnabled ? "完成操作" : "操作名城地圖") + '</b><span>' + (uiState.castleMapInteractionEnabled ? "鎖定後可繼續滑動頁面" : "點一下才可拖曳與縮放") + '</span></button></div><p>名單依日本城郭協會編號；地圖座標為各城代表點。</p></div><div class="castle-directory"><div class="castle-toolbar"><div class="castle-search"><span>⌕</span><input type="search" data-castle-search placeholder="搜尋城名、所在地或編號" value="' + escapeHtml(uiState.castleSearch) + '"></div><div class="castle-filters">' + filters + '</div></div><div class="castle-list">' + (list || '<p class="panel-empty">找不到符合條件的名城。</p>') + "</div></div></div></section>";
   }
 
   function renderExplore(trip, days) {
@@ -1347,14 +1348,23 @@
   // Travel 自己不做任何 matchMedia／桌機斷點。桌機純滑鼠(requiresTouchGuard=false)→預設可操作；
   // 觸控／混合→維持鎖定。SDK 未載入／degraded／未授權／逾時→安全退回「地圖鎖定」（最保守）。
   function applyMapGuard(locked) {
-    if (uiState.mapGuardUserOverridden) return;   // 使用者手動切過就交還控制權，不再自動覆蓋
-    var next = !locked;
+    var guardRequired = Boolean(locked);
+    var guardChanged = uiState.mapTouchGuardRequired !== guardRequired;
+    uiState.mapTouchGuardRequired = guardRequired;
+    if (uiState.mapGuardUserOverridden) {
+      if (guardChanged) {
+        var overriddenRoot = document.getElementById("app-root");
+        if (overriddenRoot) render(overriddenRoot);
+      }
+      return;
+    }
+    var next = !guardRequired;
     var changed = uiState.mapInteractionEnabled !== next || uiState.castleMapInteractionEnabled !== next;
     uiState.mapInteractionEnabled = next;
     uiState.castleMapInteractionEnabled = next;
     if (mapController) mapController.setInteraction(next);
     if (castleMapController) castleMapController.setInteraction(next);
-    if (changed) {
+    if (changed || guardChanged) {
       var root = document.getElementById("app-root");
       if (root) render(root);
     }
